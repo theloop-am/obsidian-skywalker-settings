@@ -21,6 +21,21 @@ const CONTAINER_CLASS = 'loop-starfield';
  *  density. Without this a pane would carry twenty times the strip's stars. */
 const EDGE_DENSITY = 0.22;
 const ACTIVE_CLASS = 'loop-starfield-active';
+/** Kept in step with the transition in styles.css. */
+const FADE_MS = 320;
+
+/** One star leaving, because its pane no longer has room for it. */
+function fadeOutStar(star: HTMLElement): void {
+  star.addClass('is-disappearing');
+  window.setTimeout(() => star.detach(), FADE_MS + 40);
+}
+
+/** Fade a field out and drop it once it has gone, rather than yanking it. */
+function retire(el: HTMLElement): void {
+  if (el.classList.contains('is-leaving')) return;
+  el.addClass('is-leaving');
+  window.setTimeout(() => el.detach(), FADE_MS + 40);
+}
 
 /** Size in px, glow radius multiplier, and the period band it blinks in. */
 const TIERS = [
@@ -75,7 +90,7 @@ function pickTier() {
   return TIERS[0];
 }
 
-function fill(container: HTMLElement, count: number, settings: SkywalkerSettings): void {
+function fill(container: HTMLElement, count: number, settings: SkywalkerSettings, fadeIn = false): void {
   const scale = settings.starScale / 100;
   const speed = settings.starSpeed / 100;
 
@@ -88,7 +103,9 @@ function fill(container: HTMLElement, count: number, settings: SkywalkerSettings
     const classes = ['loop-star'];
     if (blinks) classes.push('loop-star-blink');
     if (settings.starDrift > 0) classes.push('loop-star-drift');
+    if (fadeIn) classes.push('is-appearing');
     const star = container.createDiv({ cls: classes.join(' ') });
+    if (fadeIn) window.requestAnimationFrame(() => star.removeClass('is-appearing'));
 
     const props: Record<string, string> = {
       '--x': `${rand(0, 100).toFixed(2)}%`,
@@ -128,17 +145,39 @@ function fill(container: HTMLElement, count: number, settings: SkywalkerSettings
   }
 }
 
+/** Everything about the settings that changes what a field looks like. If this
+ *  is unchanged and the box is the same size, the field on screen is already
+ *  correct and rebuilding it would only shuffle the stars for no reason. */
+function signature(settings: SkywalkerSettings): string {
+  return [
+    settings.starCount,
+    settings.starMax,
+    settings.starScale,
+    settings.starSpeed,
+    settings.starBlinkShare,
+    settings.starBrightness,
+    settings.starEdgeBrightness,
+    settings.starWarmShare,
+    settings.starColor,
+    settings.starWarmColor,
+    settings.starDrift,
+    settings.starHeight,
+  ].join('|');
+}
+
 export function renderStarfield(settings: SkywalkerSettings): void {
-  removeStarfield();
-  if (!settings.starfieldEnabled || settings.starCount < 1) return;
+  if (!settings.starfieldEnabled || settings.starCount < 1) {
+    removeStarfield();
+    return;
+  }
 
   const bandHeight = settings.starHeight;
   const topArea = window.innerWidth * bandHeight;
   if (topArea <= 0) return;
-  // One count, spread at a constant density, so a tall sidebar is not as sparse
-  // as a thin strip and the slider keeps meaning the same thing everywhere.
   const density = settings.starCount / topArea;
+  const sig = signature(settings);
 
+  const kept = new Set<HTMLElement>();
   let drew = false;
 
   for (const region of REGIONS) {
@@ -147,51 +186,86 @@ export function renderStarfield(settings: SkywalkerSettings): void {
     const hosts =
       region.selector === 'body'
         ? [document.body]
-        : region.all
-          ? Array.from(document.querySelectorAll<HTMLElement>(region.selector))
-          : [document.querySelector<HTMLElement>(region.selector)].filter(Boolean as unknown as (v: HTMLElement | null) => v is HTMLElement);
+        : Array.from(document.querySelectorAll<HTMLElement>(region.selector));
 
     for (const host of hosts) {
+      const rect = region.fixedBand
+        ? { width: window.innerWidth, height: bandHeight }
+        : host.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) continue;
 
-    const rect = region.fixedBand
-      ? { width: window.innerWidth, height: bandHeight }
-      : host.getBoundingClientRect();
-    if (rect.width < 1 || rect.height < 1) continue;
+      const box = `${Math.round(rect.width)}x${Math.round(rect.height)}`;
+      const existing = Array.from(host.children).find(
+        (el): el is HTMLElement =>
+          el instanceof HTMLElement &&
+          el.classList.contains(CONTAINER_CLASS) &&
+          !el.classList.contains('is-leaving')
+      );
 
-    // A sidebar is some twenty-five times the area of the top strip, so the same
-    // density would put well over a thousand animated elements down each side.
-    // They read better sparser anyway, and the browser has less to do.
-    // The ceiling is the user's, not ours: it is there to keep a large display
-    // from quietly turning into thousands of animated elements. The formula
-    // decides the number underneath it. When the ceiling is doing the deciding
-    // instead, density stops being constant and the whole calculation is just a
-    // constant in disguise.
-    const spread = region.edge ? EDGE_DENSITY : 1;
-    const count = Math.min(Math.round(density * rect.width * rect.height * spread), settings.starMax);
-    if (count < 1) continue;
+      const spread = region.edge ? EDGE_DENSITY : 1;
+      const wanted = Math.min(
+        Math.round(density * rect.width * rect.height * spread),
+        settings.starMax
+      );
+      if (wanted < 1) continue;
 
-    const container = host.createDiv({
-      cls: region.fixedBand ? `${CONTAINER_CLASS} ${CONTAINER_CLASS}-band` : CONTAINER_CLASS,
-    });
-    container.setAttribute('aria-hidden', 'true');
+      // A pane getting wider does not rearrange the sky above it; you simply see
+      // more of it. So a field is never replaced when only its size changed. The
+      // stars already stretch with the pane, since their positions are
+      // percentages, and all that is missing is the few the extra room should
+      // hold. Fading between two arrangements reads as a slide transition
+      // however smooth the fade, because it is two skies rather than one.
+      if (existing && existing.dataset.sig === sig) {
+        const have = existing.childElementCount;
+        if (wanted > have) {
+          fill(existing, wanted - have, settings, true);
+        } else if (wanted < have) {
+          // Taken from the end, so the ones that stay do not move.
+          for (let i = have - 1; i >= wanted; i--) {
+            const star = existing.children[i];
+            if (star instanceof HTMLElement) fadeOutStar(star);
+          }
+        }
+        existing.dataset.box = box;
+        kept.add(existing);
+        drew = true;
+        continue;
+      }
 
-    const brightness = region.edge
-      ? (settings.starBrightness / 100) * (settings.starEdgeBrightness / 100)
-      : settings.starBrightness / 100;
+      if (existing) retire(existing);
 
-    container.setCssProps({
-      '--loop-starfield-height': `${bandHeight}px`,
-      '--loop-star-brightness': `${brightness.toFixed(3)}`,
-    });
+      const container = host.createDiv({
+        cls: region.fixedBand ? `${CONTAINER_CLASS} ${CONTAINER_CLASS}-band` : CONTAINER_CLASS,
+      });
+      container.setAttribute('aria-hidden', 'true');
+      container.dataset.sig = sig;
+      container.dataset.box = box;
+      // Born transparent and released on the next frame. Setting and clearing it
+      // in one frame collapses to no change, and there is nothing to transition.
+      container.addClass('is-entering');
+      window.requestAnimationFrame(() => container.removeClass('is-entering'));
 
-    fill(container, count, settings);
-    drew = true;
+      const brightness = region.edge
+        ? (settings.starBrightness / 100) * (settings.starEdgeBrightness / 100)
+        : settings.starBrightness / 100;
+
+      container.setCssProps({
+        '--loop-starfield-height': `${bandHeight}px`,
+        '--loop-star-brightness': `${brightness.toFixed(3)}`,
+      });
+
+      fill(container, wanted, settings);
+      kept.add(container);
+      drew = true;
     }
   }
 
-  // Marks that a real starfield is on screen, so the theme's own version steps
-  // aside. Keyed to drawing rather than to the plugin being installed.
-  if (drew) document.body.addClass(ACTIVE_CLASS);
+  // Fields whose pane has gone, or that a setting has turned off.
+  for (const el of document.body.findAll(`.${CONTAINER_CLASS}`)) {
+    if (!kept.has(el as HTMLElement)) retire(el as HTMLElement);
+  }
+
+  document.body.toggleClass(ACTIVE_CLASS, drew);
 }
 
 export function removeStarfield(): void {

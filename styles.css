@@ -5,7 +5,12 @@
    because Obsidian sets `.workspace-split.mod-horizontal > * { height: 0 }`,
    which outweighs a single class and collapsed the field into an invisible line
    along the top edge. */
+/* Fields cross-fade when they are rebuilt. The old one is left in place to fade
+   out while the new one fades in, so a resize is a dissolve rather than a
+   substitution you can see happen. */
 .loop-starfield {
+  opacity: 1;
+  transition: opacity var(--loop-fade, 320ms) ease;
   position: absolute;
   top: 0;
   left: 0;
@@ -14,6 +19,17 @@
   pointer-events: none;
   overflow: hidden;
   z-index: 50;
+}
+
+.loop-starfield.is-entering,
+.loop-starfield.is-leaving {
+  opacity: 0;
+}
+
+.loop-star.is-appearing,
+.loop-star.is-disappearing {
+  animation: none;
+  opacity: 0;
 }
 
 /* Outweighs the core rule that zeroes the height of a split's children. */
@@ -33,7 +49,12 @@
   height: var(--loop-starfield-height, 40px);
 }
 
+/* A star arrives or leaves on its own, so a pane that has grown gains a few
+   among the ones already there rather than swapping the whole sky. The blink
+   animation is suspended while it does, or it would drive opacity itself and
+   there would be nothing for the transition to move. */
 .loop-star {
+  transition: opacity var(--loop-fade, 320ms) ease;
   position: absolute;
   left: var(--x);
   top: var(--y);
@@ -89,6 +110,11 @@ body.theme-light .loop-starfield {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .loop-starfield,
+  .loop-star {
+    transition: none;
+  }
+
   .loop-star-blink,
   .loop-star-drift,
   .loop-star-drift.loop-star-blink {
