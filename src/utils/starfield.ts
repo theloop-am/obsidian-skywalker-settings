@@ -24,14 +24,19 @@ const CANVAS_CLASS = 'loop-starfield';
 const BAND_CLASS = 'loop-starfield-band';
 const ACTIVE_CLASS = 'loop-starfield-active';
 
-/** Size in px, glow radius multiplier, and the period band it blinks in. */
+/** Core size in px, halo reach in px, and the period band it blinks in.
+ *
+ *  The halo used to be a multiple of the size, which put a five-times lever on
+ *  the size slider: at 190% the largest star reached 36.6px and came out as a
+ *  smear seventy pixels across. It is an absolute distance now, growing with the
+ *  square root of the scale so it still responds without running away. */
 const TIERS = [
   { size: 0.5, glow: 0, period: [1.2, 2.4], weight: 34 },
   { size: 1.0, glow: 0, period: [1.6, 3.0], weight: 30 },
   { size: 1.5, glow: 0, period: [2.0, 3.6], weight: 18 },
-  { size: 2.0, glow: 2.5, period: [2.6, 4.5], weight: 10 },
-  { size: 2.5, glow: 3.5, period: [3.0, 5.5], weight: 6 },
-  { size: 3.5, glow: 5.0, period: [3.5, 6.5], weight: 2 },
+  { size: 2.0, glow: 1.6, period: [2.6, 4.5], weight: 10 },
+  { size: 2.5, glow: 2.6, period: [3.0, 5.5], weight: 6 },
+  { size: 3.5, glow: 4.0, period: [3.5, 6.5], weight: 2 },
 ];
 
 interface Region {
@@ -88,6 +93,21 @@ interface Field {
 
 const fields: Field[] = [];
 let frame: number | null = null;
+
+/** Someone who has asked the system for less movement should get a still sky,
+ *  not a stopped one: the stars stay, they simply hold their brightness. */
+function stillSky(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** A retina canvas costs four times the pixels of a plain one, and a third of
+ *  that again above 2. Past that the stars are already smaller than anything
+ *  the extra resolution could show. */
+const MAX_DPR = 2;
+
+function ratio(): number {
+  return Math.min(window.devicePixelRatio || 1, MAX_DPR);
+}
 
 /** Pre-rendered dot per size, glow and colour. Drawing a cached bitmap beats an
  *  arc and a gradient for every star on every frame. */
@@ -173,7 +193,7 @@ function makeStar(settings: SkywalkerSettings): Star {
     x: Math.random(),
     y: Math.random(),
     size,
-    glow: tier.glow ? size * tier.glow : 0,
+    glow: tier.glow ? tier.glow * Math.sqrt(scale) : 0,
     colour: warm ? settings.starWarmColor : settings.starColor,
     rest: rand(0.35, 1),
     period,
@@ -185,8 +205,8 @@ function makeStar(settings: SkywalkerSettings): Star {
 }
 
 function draw(now: number): void {
-  const seconds = now / 1000;
-  const dpr = window.devicePixelRatio || 1;
+  const seconds = stillSky() ? 0 : now / 1000;
+  const dpr = ratio();
 
   for (const field of fields) {
     const { ctx } = field;
@@ -217,7 +237,18 @@ function draw(now: number): void {
     ctx.globalAlpha = 1;
   }
 
-  frame = fields.length ? window.requestAnimationFrame(draw) : null;
+  // A still sky is drawn once. A hidden window is not drawn at all until it
+  // comes back, so nothing is spent painting what nobody is looking at.
+  frame = fields.length && !stillSky() && !document.hidden
+    ? window.requestAnimationFrame(draw)
+    : null;
+}
+
+/** Picks the loop back up after it stopped for a hidden window. */
+export function wakeStarfield(): void {
+  if (fields.length && frame === null && !stillSky() && !document.hidden) {
+    frame = window.requestAnimationFrame(draw);
+  }
 }
 
 function stars(field: Field): Star[] {
@@ -225,7 +256,7 @@ function stars(field: Field): Star[] {
 }
 
 function measure(field: Field): void {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = ratio();
   const rect = field.host.getBoundingClientRect();
 
   field.width = field.band ? window.innerWidth : rect.width;

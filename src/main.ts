@@ -1,6 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, SettingDefinitionItem, TFile } from 'obsidian';
 import { SkywalkerSettings, DEFAULT_SETTINGS } from './settings';
-import { renderStarfield, removeStarfield, resizeStarfield } from './utils/starfield';
+import { renderStarfield, removeStarfield, resizeStarfield, wakeStarfield } from './utils/starfield';
 import { applyAssets, clearAssets, IMAGE_EXTENSIONS } from './utils/assets';
 import { PRESETS, CUSTOM_PRESET, presetOptions, findPreset, matchesPreset, PresetValues } from './presets';
 
@@ -29,6 +29,10 @@ export default class SkywalkerSettingsPlugin extends Plugin {
       // 'resize' is the one that fires, and without it the star count stays at
       // whatever the pane's area happened to be when it was last drawn.
       this.registerEvent(this.app.workspace.on('resize', () => this.schedule()));
+      // The loop stops itself when the window is hidden; this starts it again.
+      this.registerDomEvent(document, 'visibilitychange', () => {
+        if (!document.hidden) wakeStarfield();
+      });
     });
     this.register(() => this.cancel());
 
