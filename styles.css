@@ -1,35 +1,19 @@
-/* Panes are position: relative, so a field pinned to their box follows them as
-   they are dragged and resized without any measuring on our part.
+/* One canvas per region: one compositor layer each, instead of a layer per
+   animated star. The panes are position: relative, so a canvas pinned to their
+   box follows them as they are dragged and resized.
 
    Sized explicitly rather than with inset: 0, and the override below is needed
    because Obsidian sets `.workspace-split.mod-horizontal > * { height: 0 }`,
    which outweighs a single class and collapsed the field into an invisible line
    along the top edge. */
-/* Fields cross-fade when they are rebuilt. The old one is left in place to fade
-   out while the new one fades in, so a resize is a dissolve rather than a
-   substitution you can see happen. */
 .loop-starfield {
-  opacity: 1;
-  transition: opacity var(--loop-fade, 320ms) ease;
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  overflow: hidden;
   z-index: 50;
-}
-
-.loop-starfield.is-entering,
-.loop-starfield.is-leaving {
-  opacity: 0;
-}
-
-.loop-star.is-appearing,
-.loop-star.is-disappearing {
-  animation: none;
-  opacity: 0;
 }
 
 /* Outweighs the core rule that zeroes the height of a split's children. */
@@ -40,84 +24,16 @@
   flex: none;
 }
 
-/* The top strip is not a pane, so it is a fixed band across the window. */
+/* The top strip is not a pane, so it is a fixed band across the window. Its
+   height comes from the canvas element itself. */
 .loop-starfield-band {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: var(--loop-starfield-height, 40px);
-}
-
-/* A star arrives or leaves on its own, so a pane that has grown gains a few
-   among the ones already there rather than swapping the whole sky. The blink
-   animation is suspended while it does, or it would drive opacity itself and
-   there would be nothing for the transition to move. */
-.loop-star {
-  transition: opacity var(--loop-fade, 320ms) ease;
-  position: absolute;
-  left: var(--x);
-  top: var(--y);
-  width: var(--size);
-  height: var(--size);
-  border-radius: 50%;
-  background-color: var(--color);
-  /* Only the larger tiers pass a non-zero glow; the small ones stay bare
-     points, which is what keeps the field from turning into a haze. */
-  box-shadow: 0 0 var(--glow) calc(var(--glow) / 6) var(--color);
-  opacity: calc(var(--loop-star-brightness, 0.7) * var(--rest));
-}
-
-/* Parallax, when it is turned on. Distance is set per star from its size, so
-   the near ones travel and the far ones barely do. Alternating avoids the snap
-   that a looping translate would need. */
-.loop-star-drift {
-  animation: loop-star-parallax var(--drift-period) ease-in-out var(--drift-delay) infinite alternate;
-}
-
-.loop-star-drift.loop-star-blink {
-  animation:
-    loop-star-blink var(--period) ease-in-out var(--delay) infinite,
-    loop-star-parallax var(--drift-period) ease-in-out var(--drift-delay) infinite alternate;
-}
-
-@keyframes loop-star-parallax {
-  from {
-    transform: translate3d(calc(var(--drift) * -1), 0, 0);
-  }
-
-  to {
-    transform: translate3d(var(--drift), 0, 0);
-  }
-}
-
-/* Most of the sky holds still. Only the stars that carry this blink, and they
-   go all the way out rather than merely dimming. */
-.loop-star-blink {
-  will-change: opacity;
-  animation: loop-star-blink var(--period) ease-in-out var(--delay) infinite;
-}
-
-@keyframes loop-star-blink {
-  50% {
-    opacity: 0;
-  }
 }
 
 /* Light mode is not a night sky. */
 body.theme-light .loop-starfield {
   display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .loop-starfield,
-  .loop-star {
-    transition: none;
-  }
-
-  .loop-star-blink,
-  .loop-star-drift,
-  .loop-star-drift.loop-star-blink {
-    animation: none;
-  }
 }

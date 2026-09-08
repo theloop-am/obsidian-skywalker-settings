@@ -1,6 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, SettingDefinitionItem, TFile } from 'obsidian';
 import { SkywalkerSettings, DEFAULT_SETTINGS } from './settings';
-import { renderStarfield, removeStarfield } from './utils/starfield';
+import { renderStarfield, removeStarfield, resizeStarfield } from './utils/starfield';
 import { applyAssets, clearAssets, IMAGE_EXTENSIONS } from './utils/assets';
 import { PRESETS, CUSTOM_PRESET, presetOptions, findPreset, matchesPreset, PresetValues } from './presets';
 
@@ -57,7 +57,10 @@ export default class SkywalkerSettingsPlugin extends Plugin {
     this.cancel();
     this.settleTimer = window.setTimeout(() => {
       this.settleTimer = null;
-      this.refresh();
+      // A pane that only changed size keeps its stars; the canvas is remeasured
+      // and the count adjusted. Only when a pane has come or gone is everything
+      // built again.
+      if (!resizeStarfield(this.settings)) this.refresh();
     }, SETTLE_MS);
   }
 
