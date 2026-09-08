@@ -1,12 +1,18 @@
+/* Panes are position: relative, so a field pinned to their box follows them as
+   they are dragged and resized without any measuring on our part. */
 .loop-starfield {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--loop-starfield-height, 40px);
+  position: absolute;
+  inset: 0;
   pointer-events: none;
   overflow: hidden;
   z-index: 50;
+}
+
+/* The top strip is not a pane, so it is a fixed band across the window. */
+.loop-starfield-band {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--loop-starfield-height, 40px);
 }
 
 .loop-star {
@@ -21,6 +27,29 @@
      points, which is what keeps the field from turning into a haze. */
   box-shadow: 0 0 var(--glow) calc(var(--glow) / 6) var(--color);
   opacity: calc(var(--loop-star-brightness, 0.7) * var(--rest));
+}
+
+/* Parallax, when it is turned on. Distance is set per star from its size, so
+   the near ones travel and the far ones barely do. Alternating avoids the snap
+   that a looping translate would need. */
+.loop-star-drift {
+  animation: loop-star-parallax var(--drift-period) ease-in-out var(--drift-delay) infinite alternate;
+}
+
+.loop-star-drift.loop-star-blink {
+  animation:
+    loop-star-blink var(--period) ease-in-out var(--delay) infinite,
+    loop-star-parallax var(--drift-period) ease-in-out var(--drift-delay) infinite alternate;
+}
+
+@keyframes loop-star-parallax {
+  from {
+    transform: translate3d(calc(var(--drift) * -1), 0, 0);
+  }
+
+  to {
+    transform: translate3d(var(--drift), 0, 0);
+  }
 }
 
 /* Most of the sky holds still. Only the stars that carry this blink, and they
@@ -42,7 +71,9 @@ body.theme-light .loop-starfield {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loop-star-blink {
+  .loop-star-blink,
+  .loop-star-drift,
+  .loop-star-drift.loop-star-blink {
     animation: none;
   }
 }

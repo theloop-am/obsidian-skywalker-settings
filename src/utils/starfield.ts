@@ -3,12 +3,6 @@ import { SkywalkerSettings } from '../settings';
 /**
  * A starfield of real elements.
  *
- * The theme ships a CSS-only version and it is limited in a way no amount of
- * cleverness gets around: one pseudo-element carries one opacity animation, so
- * every star drawn into it pulses in unison. Six pseudo-elements is six groups,
- * and that is the ceiling. Here each star is its own element, so the count is an
- * actual count and no two are in step.
- *
  * The look follows jo_Geek's Night Sky pen (MIT), which gets four things right
  * that are easy to miss:
  *
@@ -23,16 +17,35 @@ import { SkywalkerSettings } from '../settings';
  */
 
 const CONTAINER_CLASS = 'loop-starfield';
+/** Sidebars get a fraction of the top strip's density, and a hard ceiling. */
+const EDGE_DENSITY = 0.22;
+const MAX_PER_REGION = 400;
 const ACTIVE_CLASS = 'loop-starfield-active';
 
 /** Size in px, glow radius multiplier, and the period band it blinks in. */
 const TIERS = [
-  { size: 0.5, glow: 0, period: [1.0, 2.5], weight: 34 },
-  { size: 1.0, glow: 0, period: [2.0, 4.0], weight: 30 },
-  { size: 1.5, glow: 0, period: [3.0, 5.0], weight: 18 },
-  { size: 2.0, glow: 2.5, period: [4.0, 7.0], weight: 10 },
-  { size: 2.5, glow: 3.5, period: [5.0, 9.0], weight: 6 },
-  { size: 3.5, glow: 5.0, period: [6.0, 11.0], weight: 2 },
+  { size: 0.5, glow: 0, period: [1.2, 2.4], weight: 34 },
+  { size: 1.0, glow: 0, period: [1.6, 3.0], weight: 30 },
+  { size: 1.5, glow: 0, period: [2.0, 3.6], weight: 18 },
+  { size: 2.0, glow: 2.5, period: [2.6, 4.5], weight: 10 },
+  { size: 2.5, glow: 3.5, period: [3.0, 5.5], weight: 6 },
+  { size: 3.5, glow: 5.0, period: [3.5, 6.5], weight: 2 },
+];
+
+interface Region {
+  /** Element the field is attached to, so it follows the pane as it resizes. */
+  selector: string;
+  enabled: (s: SkywalkerSettings) => boolean;
+  /** The top strip is a fixed band; the panes fill their host. */
+  fixedBand?: boolean;
+  /** Full strength at the top, dimmed at the edges so they stay out of the way. */
+  edge?: boolean;
+}
+
+const REGIONS: Region[] = [
+  { selector: 'body', enabled: (s) => s.starRegionTop, fixedBand: true },
+  { selector: '.workspace-split.mod-left-split', enabled: (s) => s.starRegionLeft, edge: true },
+  { selector: '.workspace-split.mod-right-split', enabled: (s) => s.starRegionRight, edge: true },
 ];
 
 function rand(min: number, max: number): number {
@@ -49,46 +62,45 @@ function pickTier() {
   return TIERS[0];
 }
 
-export function renderStarfield(settings: SkywalkerSettings): void {
-  removeStarfield();
-  if (!settings.starfieldEnabled || settings.starCount < 1) return;
-
-  // Marks that a real starfield is on screen, so the theme's CSS-only version
-  // steps aside. Deliberately not tied to the plugin merely being installed:
-  // with the plugin's stars switched off, the theme's should still show.
-  document.body.addClass(ACTIVE_CLASS);
-
-  const container = document.body.createDiv({ cls: CONTAINER_CLASS });
-  container.setAttribute('aria-hidden', 'true');
-  container.setCssProps({
-    '--loop-starfield-height': `${settings.starHeight}px`,
-    '--loop-star-brightness': `${settings.starBrightness / 100}`,
-  });
-
+function fill(container: HTMLElement, count: number, settings: SkywalkerSettings): void {
   const scale = settings.starScale / 100;
   const speed = settings.starSpeed / 100;
 
-  for (let i = 0; i < settings.starCount; i++) {
+  for (let i = 0; i < count; i++) {
     const tier = pickTier();
     const blinks = Math.random() * 100 < settings.starBlinkShare;
     const warm = Math.random() * 100 < settings.starWarmShare;
     const size = tier.size * scale;
 
-    const star = container.createDiv({
-      cls: blinks ? 'loop-star loop-star-blink' : 'loop-star',
-    });
+    const classes = ['loop-star'];
+    if (blinks) classes.push('loop-star-blink');
+    if (settings.starDrift > 0) classes.push('loop-star-drift');
+    const star = container.createDiv({ cls: classes.join(' ') });
 
     const props: Record<string, string> = {
-      // Denser towards the top, the way a horizon thins out.
       '--x': `${rand(0, 100).toFixed(2)}%`,
+      // Thinner towards the bottom, the way a sky does above a horizon.
       '--y': `${(Math.pow(Math.random(), 1.4) * 88 + 6).toFixed(2)}%`,
       '--size': `${size.toFixed(2)}px`,
       '--color': warm ? settings.starWarmColor : settings.starColor,
       '--glow': tier.glow ? `${(size * tier.glow).toFixed(2)}px` : '0px',
-      // Fixed stars sit at a range of brightnesses so the still half of the sky
-      // is not a flat wash of identical dots.
+      // The fixed half of the sky sits at a range of brightnesses, so it is not
+      // a flat wash of identical dots.
       '--rest': `${rand(0.35, 1).toFixed(2)}`,
     };
+
+    // Parallax. Real stars do not move relative to one another on any timescale
+    // you would notice; what sells depth is the viewer moving, with nearer
+    // things sliding further than distant ones. So drift is tied to size, which
+    // is the only depth cue here: the big foreground stars wander, the small
+    // ones very nearly hold still. It alternates rather than looping, because a
+    // loop has to snap back and the snap is what gives away a ticker tape.
+    if (settings.starDrift > 0) {
+      const depth = size / (TIERS[TIERS.length - 1].size * scale);
+      props['--drift'] = `${(settings.starDrift * depth).toFixed(2)}px`;
+      props['--drift-period'] = `${rand(70, 140).toFixed(0)}s`;
+      props['--drift-delay'] = `${(-rand(0, 140)).toFixed(0)}s`;
+    }
 
     if (blinks) {
       const period = rand(tier.period[0], tier.period[1]) / speed;
@@ -101,6 +113,61 @@ export function renderStarfield(settings: SkywalkerSettings): void {
 
     star.setCssProps(props);
   }
+}
+
+export function renderStarfield(settings: SkywalkerSettings): void {
+  removeStarfield();
+  if (!settings.starfieldEnabled || settings.starCount < 1) return;
+
+  const bandHeight = settings.starHeight;
+  const topArea = window.innerWidth * bandHeight;
+  if (topArea <= 0) return;
+  // One count, spread at a constant density, so a tall sidebar is not as sparse
+  // as a thin strip and the slider keeps meaning the same thing everywhere.
+  const density = settings.starCount / topArea;
+
+  let drew = false;
+
+  for (const region of REGIONS) {
+    if (!region.enabled(settings)) continue;
+
+    const host =
+      region.selector === 'body' ? document.body : document.querySelector<HTMLElement>(region.selector);
+    if (!host) continue;
+
+    const rect = region.fixedBand
+      ? { width: window.innerWidth, height: bandHeight }
+      : host.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) continue;
+
+    // A sidebar is some twenty-five times the area of the top strip, so the same
+    // density would put well over a thousand animated elements down each side.
+    // They read better sparser anyway, and the browser has less to do.
+    const spread = region.edge ? EDGE_DENSITY : 1;
+    const count = Math.min(Math.round(density * rect.width * rect.height * spread), MAX_PER_REGION);
+    if (count < 1) continue;
+
+    const container = host.createDiv({
+      cls: region.fixedBand ? `${CONTAINER_CLASS} ${CONTAINER_CLASS}-band` : CONTAINER_CLASS,
+    });
+    container.setAttribute('aria-hidden', 'true');
+
+    const brightness = region.edge
+      ? (settings.starBrightness / 100) * (settings.starEdgeBrightness / 100)
+      : settings.starBrightness / 100;
+
+    container.setCssProps({
+      '--loop-starfield-height': `${bandHeight}px`,
+      '--loop-star-brightness': `${brightness.toFixed(3)}`,
+    });
+
+    fill(container, count, settings);
+    drew = true;
+  }
+
+  // Marks that a real starfield is on screen, so the theme's own version steps
+  // aside. Keyed to drawing rather than to the plugin being installed.
+  if (drew) document.body.addClass(ACTIVE_CLASS);
 }
 
 export function removeStarfield(): void {

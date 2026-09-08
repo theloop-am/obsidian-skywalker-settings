@@ -129,8 +129,45 @@ class SkywalkerSettingTab extends PluginSettingTab {
             },
           },
           {
+            name: 'Top of the window',
+            control: { type: 'toggle', key: 'starRegionTop' },
+          },
+          {
+            name: 'Left sidebar',
+            control: { type: 'toggle', key: 'starRegionLeft' },
+          },
+          {
+            name: 'Right sidebar',
+            control: { type: 'toggle', key: 'starRegionRight' },
+          },
+          {
+            name: 'Sidebar brightness',
+            desc: 'Sidebars are dimmed against the top, so they stay in the background.',
+            visible: () => this.plugin.settings.starRegionLeft || this.plugin.settings.starRegionRight,
+            control: {
+              type: 'slider',
+              key: 'starEdgeBrightness',
+              min: 5,
+              max: 100,
+              step: 5,
+              displayFormat: percent,
+            },
+          },
+          {
+            name: 'Parallax',
+            desc: 'Nearer stars drift further than distant ones. Very slow, and off by default.',
+            control: {
+              type: 'slider',
+              key: 'starDrift',
+              min: 0,
+              max: 30,
+              step: 1,
+              displayFormat: (value: number) => (value === 0 ? 'Off' : `${value}px`),
+            },
+          },
+          {
             name: 'Height',
-            desc: 'How far down from the top the stars reach.',
+            desc: 'How far down from the top the stars reach. Sidebars fill their own height.',
             control: {
               type: 'slider',
               key: 'starHeight',
