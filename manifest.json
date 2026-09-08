@@ -1,0 +1,10 @@
+{
+  "id": "loop-skywalker-settings",
+  "name": "LOOP - Skywalker Settings",
+  "version": "0.1.0",
+  "minAppVersion": "1.13.0",
+  "description": "Companion for the LOOP - Skywalker theme. Adds what CSS alone cannot do: a real starfield, and vault images exposed to the theme as CSS variables.",
+  "author": "theLOOP",
+  "authorUrl": "https://github.com/theloop-am/loop-skywalker-settings",
+  "isDesktopOnly": false
+}
