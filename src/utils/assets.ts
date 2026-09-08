@@ -52,8 +52,5 @@ export function clearAssets(): void {
   document.body.removeClass('loop-has-vault-logo', 'loop-has-banner-logo');
 }
 
-/** Vault files this plugin is willing to point a CSS variable at. */
-export function imageFiles(app: App): TFile[] {
-  const allowed = ['svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'];
-  return app.vault.getFiles().filter((f) => allowed.includes(f.extension.toLowerCase()));
-}
+/** Extensions the file pickers will offer. */
+export const IMAGE_EXTENSIONS = ['svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'];

@@ -28,11 +28,7 @@ back to its own LOOP marks.
 
 ### A real starfield
 
-The theme draws stars in CSS. One pseudo-element can only carry one opacity
-animation, so every star inside it pulses in unison — six pseudo-elements means
-six groups, and there is no way around it.
-
-Here every star is its own element, so the count is an actual count and no two
+Every star is its own element, so the count is an actual count and no two
 are in step. The field follows a few rules borrowed from
 [jo_Geek's Night Sky pen](https://codepen.io/jo_Geek/pen/EOKvLE) (MIT), which
 get right what is easy to miss:
@@ -46,9 +42,22 @@ get right what is easy to miss:
 A sky where everything pulses gently at once reads as decoration. A sky where
 most points sit still and a few wink out entirely reads as a sky.
 
+Four presets cover most of it, and each one sets the count, size, brightness,
+twinkle and warmth together:
+
+| Preset | What it looks like |
+| --- | --- |
+| Headliner | Sparse and calm, like the roof of a car |
+| Deep sky | Dense and almost still, the way a clear night actually looks |
+| Sparkle | Fewer stars, most of them blinking, quickly |
+| Embers | Large, slow and warm |
+
+The individual sliders stay out of the way until you pick Custom, and moving any
+of them switches the preset to Custom, so the dropdown never claims something the
+sky is not doing.
+
 While the plugin is drawing stars it sets `loop-starfield-active` on `body` and
-the theme's CSS version steps aside. Switch the plugin's stars off and the
-theme's come back.
+the theme's own version steps aside.
 
 ## Install
 

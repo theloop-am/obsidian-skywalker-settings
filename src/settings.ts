@@ -1,6 +1,7 @@
 export interface SkywalkerSettings {
   /** Starfield across the top bar. */
   starfieldEnabled: boolean;
+  starPreset: string;
   starCount: number;
   starHeight: number;
   starScale: number;
@@ -18,15 +19,16 @@ export interface SkywalkerSettings {
 
 export const DEFAULT_SETTINGS: SkywalkerSettings = {
   starfieldEnabled: false,
-  starCount: 120,
+  starPreset: 'headliner',
+  starCount: 70,
   starHeight: 40,
-  starScale: 100,
-  starSpeed: 100,
-  starBlinkShare: 45,
-  starBrightness: 70,
+  starScale: 110,
+  starSpeed: 70,
+  starBlinkShare: 30,
+  starBrightness: 65,
   starColor: '#ffffff',
   starWarmColor: '#ffe9b8',
-  starWarmShare: 25,
+  starWarmShare: 35,
 
   vaultLogoPath: '',
   bannerLogoPath: '',
