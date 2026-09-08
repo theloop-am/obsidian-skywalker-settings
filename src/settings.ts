@@ -5,9 +5,11 @@ export interface SkywalkerSettings {
   starRegionTop: boolean;
   starRegionLeft: boolean;
   starRegionRight: boolean;
+  starRegionEmptyTab: boolean;
   starEdgeBrightness: number;
   starDrift: number;
   starCount: number;
+  starMax: number;
   starHeight: number;
   starScale: number;
   starSpeed: number;
@@ -28,9 +30,11 @@ export const DEFAULT_SETTINGS: SkywalkerSettings = {
   starRegionTop: true,
   starRegionLeft: false,
   starRegionRight: false,
+  starRegionEmptyTab: false,
   starEdgeBrightness: 45,
   starDrift: 0,
   starCount: 70,
+  starMax: 1500,
   starHeight: 40,
   starScale: 110,
   starSpeed: 100,

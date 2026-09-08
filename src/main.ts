@@ -5,10 +5,12 @@ import { applyAssets, clearAssets, IMAGE_EXTENSIONS } from './utils/assets';
 import { PRESETS, CUSTOM_PRESET, presetOptions, findPreset, matchesPreset, PresetValues } from './presets';
 
 const COMPANION_CLASS = 'loop-skywalker-companion';
+const SETTLE_MS = 120;
 
 export default class SkywalkerSettingsPlugin extends Plugin {
   settings: SkywalkerSettings;
   tab: SkywalkerSettingTab;
+  private settleTimer: number | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -17,7 +19,18 @@ export default class SkywalkerSettingsPlugin extends Plugin {
     // the two never draw the same thing twice.
     document.body.addClass(COMPANION_CLASS);
 
-    this.app.workspace.onLayoutReady(() => this.refresh());
+    this.app.workspace.onLayoutReady(() => {
+      this.refresh();
+      // Panes open and close.
+      this.registerEvent(this.app.workspace.on('layout-change', () => this.schedule()));
+      // Empty tabs come and go as notes are opened and closed.
+      this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.schedule()));
+      // Dragging a divider changes no structure, so layout-change stays silent.
+      // 'resize' is the one that fires, and without it the star count stays at
+      // whatever the pane's area happened to be when it was last drawn.
+      this.registerEvent(this.app.workspace.on('resize', () => this.schedule()));
+    });
+    this.register(() => this.cancel());
 
     this.tab = new SkywalkerSettingTab(this.app, this);
     this.addSettingTab(this.tab);
@@ -38,7 +51,25 @@ export default class SkywalkerSettingsPlugin extends Plugin {
     });
   }
 
+  /** Dragging a divider fires continuously, and rebuilding hundreds of elements
+   *  on each of those is pointless. Wait for it to settle. */
+  private schedule(): void {
+    this.cancel();
+    this.settleTimer = window.setTimeout(() => {
+      this.settleTimer = null;
+      this.refresh();
+    }, SETTLE_MS);
+  }
+
+  private cancel(): void {
+    if (this.settleTimer !== null) {
+      window.clearTimeout(this.settleTimer);
+      this.settleTimer = null;
+    }
+  }
+
   onunload() {
+    this.cancel();
     removeStarfield();
     clearAssets();
     document.body.removeClass(COMPANION_CLASS);
@@ -175,6 +206,22 @@ class SkywalkerSettingTab extends PluginSettingTab {
               max: 200,
               step: 2,
               displayFormat: pixels,
+            },
+          },
+          {
+            name: 'Show on empty tabs',
+            desc: 'Obsidian\u2019s New tab pane, where there is nothing to read.',
+            control: { type: 'toggle', key: 'starRegionEmptyTab' },
+          },
+          {
+            name: 'Most stars in one area',
+            desc: 'A ceiling, so a large display does not end up with thousands of them. Raise it if the panes look sparser than the top bar.',
+            control: {
+              type: 'slider',
+              key: 'starMax',
+              min: 100,
+              max: 4000,
+              step: 100,
             },
           },
           {

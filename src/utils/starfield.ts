@@ -17,9 +17,9 @@ import { SkywalkerSettings } from '../settings';
  */
 
 const CONTAINER_CLASS = 'loop-starfield';
-/** Sidebars get a fraction of the top strip's density, and a hard ceiling. */
+/** Sidebars are far larger than the top strip, so they take a fraction of its
+ *  density. Without this a pane would carry twenty times the strip's stars. */
 const EDGE_DENSITY = 0.22;
-const MAX_PER_REGION = 400;
 const ACTIVE_CLASS = 'loop-starfield-active';
 
 /** Size in px, glow radius multiplier, and the period band it blinks in. */
@@ -40,12 +40,25 @@ interface Region {
   fixedBand?: boolean;
   /** Full strength at the top, dimmed at the edges so they stay out of the way. */
   edge?: boolean;
+  /** There can be several empty tabs open at once. */
+  all?: boolean;
 }
 
 const REGIONS: Region[] = [
   { selector: 'body', enabled: (s) => s.starRegionTop, fixedBand: true },
   { selector: '.workspace-split.mod-left-split', enabled: (s) => s.starRegionLeft, edge: true },
   { selector: '.workspace-split.mod-right-split', enabled: (s) => s.starRegionRight, edge: true },
+  {
+    // Obsidian's own empty pane: no note, just Create new note / Go to file. It
+    // is already transparent and position: relative, so the field goes inside it
+    // and nothing about the app's own painting is touched.
+    selector: '.workspace-leaf-content[data-type="empty"] .view-content',
+    enabled: (s) => s.starRegionEmptyTab,
+    all: true,
+    // Counted as an edge like the sidebars. Left out of that it came through at
+    // full strength and read as a different sky in the middle of the window.
+    edge: true,
+  },
 ];
 
 function rand(min: number, max: number): number {
@@ -131,9 +144,14 @@ export function renderStarfield(settings: SkywalkerSettings): void {
   for (const region of REGIONS) {
     if (!region.enabled(settings)) continue;
 
-    const host =
-      region.selector === 'body' ? document.body : document.querySelector<HTMLElement>(region.selector);
-    if (!host) continue;
+    const hosts =
+      region.selector === 'body'
+        ? [document.body]
+        : region.all
+          ? Array.from(document.querySelectorAll<HTMLElement>(region.selector))
+          : [document.querySelector<HTMLElement>(region.selector)].filter(Boolean as unknown as (v: HTMLElement | null) => v is HTMLElement);
+
+    for (const host of hosts) {
 
     const rect = region.fixedBand
       ? { width: window.innerWidth, height: bandHeight }
@@ -143,8 +161,13 @@ export function renderStarfield(settings: SkywalkerSettings): void {
     // A sidebar is some twenty-five times the area of the top strip, so the same
     // density would put well over a thousand animated elements down each side.
     // They read better sparser anyway, and the browser has less to do.
+    // The ceiling is the user's, not ours: it is there to keep a large display
+    // from quietly turning into thousands of animated elements. The formula
+    // decides the number underneath it. When the ceiling is doing the deciding
+    // instead, density stops being constant and the whole calculation is just a
+    // constant in disguise.
     const spread = region.edge ? EDGE_DENSITY : 1;
-    const count = Math.min(Math.round(density * rect.width * rect.height * spread), MAX_PER_REGION);
+    const count = Math.min(Math.round(density * rect.width * rect.height * spread), settings.starMax);
     if (count < 1) continue;
 
     const container = host.createDiv({
@@ -163,6 +186,7 @@ export function renderStarfield(settings: SkywalkerSettings): void {
 
     fill(container, count, settings);
     drew = true;
+    }
   }
 
   // Marks that a real starfield is on screen, so the theme's own version steps
