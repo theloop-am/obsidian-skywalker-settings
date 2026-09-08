@@ -1,17 +1,35 @@
 /* Panes are position: relative, so a field pinned to their box follows them as
-   they are dragged and resized without any measuring on our part. */
+   they are dragged and resized without any measuring on our part.
+
+   Sized explicitly rather than with inset: 0, and the override below is needed
+   because Obsidian sets `.workspace-split.mod-horizontal > * { height: 0 }`,
+   which outweighs a single class and collapsed the field into an invisible line
+   along the top edge. */
 .loop-starfield {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   overflow: hidden;
   z-index: 50;
 }
 
+/* Outweighs the core rule that zeroes the height of a split's children. */
+.workspace-split > .loop-starfield,
+.workspace-split.mod-horizontal > .loop-starfield,
+.workspace-split.mod-vertical > .loop-starfield {
+  height: 100%;
+  flex: none;
+}
+
 /* The top strip is not a pane, so it is a fixed band across the window. */
 .loop-starfield-band {
   position: fixed;
-  inset: 0 0 auto 0;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: var(--loop-starfield-height, 40px);
 }
 
