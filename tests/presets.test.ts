@@ -11,8 +11,8 @@ import {
   matchesPreset,
   PRESET_IDS,
   PRESET_KEYS,
-  presetOptions,
   PRESETS,
+  presetOptions,
 } from '../src/presets';
 import { DEFAULT_SETTINGS } from '../src/settings';
 

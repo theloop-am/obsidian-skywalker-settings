@@ -105,12 +105,14 @@ describe('the manifest gate', () => {
 describe('the release gate', () => {
   const CHANGELOG = '# Changelog\n\n## [0.1.0] - 2026-09-09\n\n### Added\n\n- The first release.\n';
 
-  async function releaseFixture(over: {
-    manifest?: Record<string, unknown>;
-    pkg?: Record<string, unknown>;
-    versions?: Record<string, string>;
-    changelog?: string;
-  } = {}): Promise<string> {
+  async function releaseFixture(
+    over: {
+      manifest?: Record<string, unknown>;
+      pkg?: Record<string, unknown>;
+      versions?: Record<string, string>;
+      changelog?: string;
+    } = {},
+  ): Promise<string> {
     const root = await fixture('check-release.mjs');
     await json(root, 'manifest.json', { ...MANIFEST, ...over.manifest });
     await json(root, 'package.json', { version: '0.1.0', ...over.pkg });
@@ -220,7 +222,11 @@ describe('the stylesheet gate', () => {
 });
 
 describe('the translation gate', () => {
-  async function stringsFixture(english: string, source: string, russian = english): Promise<string> {
+  async function stringsFixture(
+    english: string,
+    source: string,
+    russian = english,
+  ): Promise<string> {
     const root = await fixture('check-strings.mjs');
     await mkdir(path.join(root, 'node_modules'));
     await symlink(

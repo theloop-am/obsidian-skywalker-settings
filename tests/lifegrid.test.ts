@@ -98,7 +98,9 @@ describe('readLife', () => {
     for (let year = 0; year < read.years; year++) {
       const start = read.yearStarts[year];
       const next = read.yearStarts[year + 1];
-      expect(next === undefined || start === undefined ? 52 : next - start).toBeGreaterThanOrEqual(52);
+      expect(next === undefined || start === undefined ? 52 : next - start).toBeGreaterThanOrEqual(
+        52,
+      );
       expect(next === undefined || start === undefined ? 53 : next - start).toBeLessThanOrEqual(53);
     }
   });
@@ -165,12 +167,16 @@ describe('fit', () => {
 
   it('never plans a gap smaller than a pixel', () => {
     fc.assert(
-      fc.property(fc.integer({ min: 50, max: 2000 }), fc.integer({ min: 50, max: 2000 }), (w, h) => {
-        for (const layout of ['ageyear', 'ribbon'] as const) {
-          const plan = fit(life(), dated({ lifeGridLayout: layout }), { width: w, height: h });
-          if (plan !== null) expect(plan.gap).toBeGreaterThanOrEqual(1);
-        }
-      }),
+      fc.property(
+        fc.integer({ min: 50, max: 2000 }),
+        fc.integer({ min: 50, max: 2000 }),
+        (w, h) => {
+          for (const layout of ['ageyear', 'ribbon'] as const) {
+            const plan = fit(life(), dated({ lifeGridLayout: layout }), { width: w, height: h });
+            if (plan !== null) expect(plan.gap).toBeGreaterThanOrEqual(1);
+          }
+        },
+      ),
     );
   });
 

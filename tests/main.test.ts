@@ -5,11 +5,11 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import SkywalkerSettingsPlugin from '../src/main';
-import { App, type Instrumented, Notice, TFile } from './stubs/obsidian';
 import { strings } from '../src/i18n/index';
+import SkywalkerSettingsPlugin from '../src/main';
 import { DEFAULT_SETTINGS } from '../src/settings';
 import { setRect, setWindowWidth } from './setup';
+import { App, type Instrumented, Notice, TFile } from './stubs/obsidian';
 
 const SETTLE = 120;
 
@@ -17,10 +17,13 @@ type Loaded = SkywalkerSettingsPlugin & Instrumented;
 
 function plugin(stored: unknown = null) {
   const app = new App();
-  const made = new SkywalkerSettingsPlugin(app as never, {
-    id: 'skywalker-settings',
-    version: '0.1.0',
-  } as never) as Loaded;
+  const made = new SkywalkerSettingsPlugin(
+    app as never,
+    {
+      id: 'skywalker-settings',
+      version: '0.1.0',
+    } as never,
+  ) as Loaded;
   made.stored = stored;
   return { app, plugin: made };
 }

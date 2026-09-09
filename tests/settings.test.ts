@@ -23,9 +23,12 @@ describe('normalise', () => {
     expect(normalise({}, PRESET_IDS)).toEqual(DEFAULT_SETTINGS);
   });
 
-  it.each([null, undefined, 42, 'settings', []])('survives %p where an object was expected', (raw) => {
-    expect(normalise(raw, PRESET_IDS)).toEqual(DEFAULT_SETTINGS);
-  });
+  it.each([null, undefined, 42, 'settings', []])(
+    'survives %p where an object was expected',
+    (raw) => {
+      expect(normalise(raw, PRESET_IDS)).toEqual(DEFAULT_SETTINGS);
+    },
+  );
 
   it('keeps every value a healthy file holds', () => {
     const stored: SkywalkerSettings = {

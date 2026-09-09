@@ -6,12 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, type SkywalkerSettings } from '../src/settings';
-import {
-  removeStarfield,
-  renderStarfield,
-  resizeStarfield,
-  wakeStarfield,
-} from '../src/starfield';
+import { removeStarfield, renderStarfield, resizeStarfield, wakeStarfield } from '../src/starfield';
 import { drawnOn, setPixelRatio, setRect, setReducedMotion, setWindowWidth } from './setup';
 
 const WIDTH = 1000;

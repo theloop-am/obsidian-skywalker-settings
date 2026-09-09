@@ -14,15 +14,9 @@ import {
 import { isImage } from '../assets';
 import { strings } from '../i18n/index';
 import { count } from '../i18n/plural';
-import {
-  CUSTOM_PRESET,
-  findPreset,
-  matchesPreset,
-  PRESET_KEYS,
-  presetOptions,
-} from '../presets';
-import { renderStarfield } from '../starfield';
+import { CUSTOM_PRESET, findPreset, matchesPreset, PRESET_KEYS, presetOptions } from '../presets';
 import { DEFAULT_SETTINGS, RANGES, type SkywalkerSettings } from '../settings';
+import { renderStarfield } from '../starfield';
 import { layoutOptions, percent, pixels, tintOptions } from './labels';
 
 /** What this screen needs from the plugin that owns it. */
@@ -156,7 +150,12 @@ export class SkywalkerSettingTab extends PluginSettingTab {
           {
             name: strings.starfield.height,
             desc: strings.starfield.heightDesc,
-            control: { type: 'slider', key: 'starHeight', ...RANGES.starHeight, displayFormat: pixels },
+            control: {
+              type: 'slider',
+              key: 'starHeight',
+              ...RANGES.starHeight,
+              displayFormat: pixels,
+            },
           },
           {
             name: strings.starfield.emptyTab,

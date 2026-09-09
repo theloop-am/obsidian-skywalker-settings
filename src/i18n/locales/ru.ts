@@ -33,7 +33,8 @@ export const STRINGS_RU: typeof STRINGS_EN = {
     edgeBrightness: 'Яркость на панелях', // Slider dimming the sidebars against the top (English: Sidebar brightness)
     edgeBrightnessDesc: 'Панели приглушены относительно верха, чтобы оставаться на заднем плане.', // Explains why they are dimmer (English: Sidebars are dimmed against the top, so they stay in the background.)
     drift: 'Параллакс', // Slider for how far nearer stars drift (English: Parallax)
-    driftDesc: 'Ближние звёзды смещаются сильнее дальних. Очень медленно, и по умолчанию выключено.', // Explains the drift (English: Nearer stars drift further than distant ones. Very slow, and off by default.)
+    driftDesc:
+      'Ближние звёзды смещаются сильнее дальних. Очень медленно, и по умолчанию выключено.', // Explains the drift (English: Nearer stars drift further than distant ones. Very slow, and off by default.)
     driftOff: 'Выключен', // Shown instead of a distance when the slider is at zero (English: Off)
     height: 'Высота', // Slider for how far down the band reaches (English: Height)
     heightDesc: 'Насколько далеко вниз от верха доходят звёзды. Панели заполняются на всю высоту.', // Explains what the height covers (English: How far down from the top the stars reach. Sidebars fill their own height.)

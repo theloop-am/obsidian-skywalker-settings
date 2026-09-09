@@ -6,9 +6,9 @@
 
 import type { App as ObsidianApp, TFile as ObsidianTFile } from 'obsidian';
 import { afterEach, describe, expect, it } from 'vitest';
-import { App, TFile, TFolder } from './stubs/obsidian';
 import { applyAssets, clearAssets, IMAGE_EXTENSIONS, isImage } from '../src/assets';
 import { DEFAULT_SETTINGS } from '../src/settings';
+import { App, TFile, TFolder } from './stubs/obsidian';
 
 const VAULT_VAR = '--loopsk-vault-logo';
 const BANNER_VAR = '--loopsk-banner-logo';

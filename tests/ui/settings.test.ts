@@ -10,12 +10,12 @@ import type {
   SettingDefinitionItem,
 } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { App, Plugin, Setting } from '../stubs/obsidian';
 import { strings } from '../../src/i18n/index';
 import { CUSTOM_PRESET, PRESET_KEYS, PRESETS } from '../../src/presets';
 import { DEFAULT_SETTINGS, RANGES, type SkywalkerSettings } from '../../src/settings';
 import { removeStarfield } from '../../src/starfield';
-import { SkywalkerSettingTab, type SettingsHost, todayISO } from '../../src/ui/settings';
+import { type SettingsHost, SkywalkerSettingTab, todayISO } from '../../src/ui/settings';
+import { App, Plugin, Setting } from '../stubs/obsidian';
 
 class Host extends Plugin {
   override settings: SkywalkerSettings = { ...DEFAULT_SETTINGS };
@@ -207,9 +207,9 @@ describe('the settings screen', () => {
     expect(names(screen().tab.getSettingDefinitions())).not.toContain(
       strings.starfield.edgeBrightness,
     );
-    expect(
-      names(screen({ starRegionRight: true }).tab.getSettingDefinitions()),
-    ).toContain(strings.starfield.edgeBrightness);
+    expect(names(screen({ starRegionRight: true }).tab.getSettingDefinitions())).toContain(
+      strings.starfield.edgeBrightness,
+    );
   });
 
   it('asks for a birth date before it offers anything else about the calendar', () => {
@@ -220,7 +220,10 @@ describe('the settings screen', () => {
 
   it('offers the rest of the calendar once a date is set', () => {
     const shown = names(
-      screen({ lifeGridEnabled: true, lifeGridBirthDate: '1984-06-01' }).tab.getSettingDefinitions(),
+      screen({
+        lifeGridEnabled: true,
+        lifeGridBirthDate: '1984-06-01',
+      }).tab.getSettingDefinitions(),
     );
     expect(shown).toContain(strings.lifegrid.years);
     expect(shown).toContain(strings.lifegrid.layout);

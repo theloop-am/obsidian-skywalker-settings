@@ -94,13 +94,35 @@ Object.defineProperty(window, 'matchMedia', {
 const rects = new WeakMap<Element, DOMRect>();
 
 export function setRect(element: Element, width: number, height: number): void {
-  rects.set(element, { x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, width, height, toJSON: () => ({}) });
+  rects.set(element, {
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: height,
+    width,
+    height,
+    toJSON: () => ({}),
+  });
 }
 
 Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
   configurable: true,
   value(this: Element) {
-    return rects.get(this) ?? { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON: () => ({}) };
+    return (
+      rects.get(this) ?? {
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: 0,
+        height: 0,
+        toJSON: () => ({}),
+      }
+    );
   },
 });
 
