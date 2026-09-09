@@ -20,7 +20,7 @@ import type { SkywalkerSettings } from './settings';
  * an array. Thousands cost nothing, a resize is a change of canvas dimensions,
  * and there is no DOM to reconcile.
  *
- * The look follows jo_Geek's Night Sky pen (MIT): sizes in discrete tiers rather
+ * Four rules separate a sky from a decoration: sizes in discrete tiers rather
  * than a continuous spread, a glow on the largest only, small stars blinking
  * quickly and large ones slowly, and most of the sky holding still while the few
  * that do blink go fully out rather than merely dimming.

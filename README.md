@@ -11,8 +11,7 @@
   - [6 Privacy](#6-privacy)
   - [7 Languages](#7-languages)
   - [8 Development](#8-development)
-  - [9 Credits](#9-credits)
-  - [10 License](#10-license)
+  - [9 License](#9-license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -44,9 +43,7 @@ Stars across the top of the window, and down either sidebar or onto empty tabs i
 there. One canvas per area, so the count is a real count: thousands cost no more frames than
 seventy.
 
-The look follows a few rules borrowed from
-[jo_Geek's Night Sky pen](https://codepen.io/jo_Geek/pen/EOKvLE) (MIT), which get right what is easy
-to miss:
+It follows four rules, which are what separate a sky from a decoration:
 
 - stars come in a few discrete sizes rather than a continuous spread;
 - only the largest carry a glow, the rest stay bare points;
@@ -152,14 +149,6 @@ VAULT=/path/to/vault mise run plugin:install   # build and copy once
 `mise run dev` reloads the plugin through the `obsidian` CLI after each rebuild, if it is on your
 `PATH`, and type-checks first so a half-saved file is never copied in.
 
-## 9 Credits
-
-The division of work between a theme and its companion follows kepano's
-[Minimal Theme Settings](https://github.com/kepano/obsidian-minimal-settings) (MIT): the theme stays
-complete on its own, the plugin only extends it.
-
-The starfield's look follows [jo_Geek's Night Sky pen](https://codepen.io/jo_Geek/pen/EOKvLE) (MIT).
-
-## 10 License
+## 9 License
 
 MIT. See [LICENSE](LICENSE).
