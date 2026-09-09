@@ -265,6 +265,23 @@ describe('resizeStarfield', () => {
     expect(starsOn(canvas) - before).toBeLessThan(before);
   });
 
+  it('asks to be built again once a pane it should draw into has appeared', () => {
+    renderStarfield(on({ starRegionTop: true, starRegionLeft: true }));
+    expect(canvases()).toHaveLength(1);
+
+    sidebar('left');
+
+    expect(resizeStarfield(on({ starRegionTop: true, starRegionLeft: true }))).toBe(false);
+  });
+
+  it('asks to be built again once a region is switched on', () => {
+    sidebar('left');
+    renderStarfield(on({ starRegionTop: true, starRegionLeft: false }));
+    expect(canvases()).toHaveLength(1);
+
+    expect(resizeStarfield(on({ starRegionTop: true, starRegionLeft: true }))).toBe(false);
+  });
+
   it('asks to be built again once a pane it drew into has gone', () => {
     const pane = sidebar('left');
     renderStarfield(on({ starRegionTop: false, starRegionLeft: true }));

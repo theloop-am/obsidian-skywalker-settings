@@ -91,9 +91,11 @@ describe('todayISO', () => {
 });
 
 describe('getControlValue', () => {
-  it.each(Object.keys(DEFAULT_SETTINGS))('reads %s from the settings', (key) => {
+  it('reads every setting the screen can drive', () => {
     const { host, tab } = screen();
-    expect(tab.getControlValue(key)).toBe(host.settings[key as keyof SkywalkerSettings]);
+    for (const key of Object.keys(DEFAULT_SETTINGS)) {
+      expect(tab.getControlValue(key)).toBe(host.settings[key as keyof SkywalkerSettings]);
+    }
   });
 
   it('reads nothing for a key the plugin does not own', () => {

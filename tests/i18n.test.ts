@@ -38,14 +38,15 @@ describe('the dictionaries', () => {
     expect([...russian.keys()].sort()).toEqual([...english.keys()].sort());
   });
 
-  it.each([...english.keys()])('translates %s', (key) => {
-    const source = english.get(key);
-    const translated = russian.get(key);
-    if (typeof source === 'string') {
-      expect(translated).toBeTypeOf('string');
-      expect(translated).not.toBe('');
-    } else {
-      expect(translated).toHaveProperty('other');
+  it('translates every entry English declares', () => {
+    for (const [key, source] of english) {
+      const translated = russian.get(key);
+      if (typeof source === 'string') {
+        expect(translated, key).toBeTypeOf('string');
+        expect(translated, key).not.toBe('');
+      } else {
+        expect(translated, key).toHaveProperty('other');
+      }
     }
   });
 
