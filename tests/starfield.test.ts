@@ -46,6 +46,16 @@ function frame(): void {
   vi.advanceTimersByTime(20);
 }
 
+/** A graph pane: a view whose own canvas the sky has to sit under. */
+function graphPane(type: 'graph' | 'localgraph' = 'graph', width = 900, height = 700): HTMLElement {
+  const leaf = document.body.createDiv({ cls: 'workspace-leaf-content' });
+  leaf.setAttribute('data-type', type);
+  const view = leaf.createDiv({ cls: 'view-content' });
+  view.createEl('canvas', { cls: 'graph-canvas' });
+  setRect(view, width, height);
+  return view;
+}
+
 function sidebar(side: 'left' | 'right', width = 300, height = 800): HTMLElement {
   const element = document.body.createDiv({ cls: `workspace-split mod-${side}-split` });
   setRect(element, width, height);
@@ -152,6 +162,38 @@ describe('renderStarfield', () => {
     frame();
     const [canvas] = canvases();
     if (canvas !== undefined) expect(starsOn(canvas)).toBeLessThanOrEqual(100);
+  });
+
+  it.each(['graph', 'localgraph'] as const)('draws into the %s view', (type) => {
+    graphPane(type);
+    renderStarfield(on({ starRegionTop: false, starRegionGraph: true }));
+    expect(canvases()).toHaveLength(1);
+  });
+
+  it('puts the sky under the graph rather than over its nodes', () => {
+    const view = graphPane();
+    renderStarfield(on({ starRegionTop: false, starRegionGraph: true }));
+
+    const sky = view.querySelector('.loopsk-starfield');
+    expect(view.firstElementChild).toBe(sky);
+    expect(sky?.classList.contains('loopsk-starfield-beneath')).toBe(true);
+  });
+
+  it('leaves the graph alone until it is switched on', () => {
+    graphPane();
+    renderStarfield(on({ starRegionTop: false, starRegionGraph: false }));
+    expect(canvases()).toHaveLength(0);
+  });
+
+  it('dims the graph the way it dims a sidebar', () => {
+    graphPane('graph', 1000, 40);
+    renderStarfield(
+      on({ starRegionTop: true, starRegionGraph: true, starEdgeBrightness: 50, starBlinkShare: 0 }),
+    );
+    frame();
+    const brightest = (canvas: HTMLCanvasElement) =>
+      Math.max(...(drawnOn(canvas)?.drawn.map((image) => image.alpha) ?? [0]));
+    expect(brightest(pane())).toBeLessThan(brightest(band()));
   });
 
   it('draws nothing in a pane with no area', () => {

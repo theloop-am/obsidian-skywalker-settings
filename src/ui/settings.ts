@@ -69,6 +69,14 @@ export class SkywalkerSettingTab extends PluginSettingTab {
 
   private readonly custom = (): boolean => this.host.settings.starPreset === CUSTOM_PRESET;
 
+  /** Every region except the top strip is dimmed, so the slider belongs to all
+   *  of them rather than to the sidebars it was first written for. */
+  private readonly dimmed = (): boolean =>
+    this.host.settings.starRegionLeft ||
+    this.host.settings.starRegionRight ||
+    this.host.settings.starRegionEmptyTab ||
+    this.host.settings.starRegionGraph;
+
   private readonly dated = (): boolean =>
     this.host.settings.lifeGridEnabled && this.host.settings.lifeGridBirthDate !== '';
 
@@ -128,7 +136,7 @@ export class SkywalkerSettingTab extends PluginSettingTab {
           {
             name: strings.starfield.edgeBrightness,
             desc: strings.starfield.edgeBrightnessDesc,
-            visible: () => this.host.settings.starRegionLeft || this.host.settings.starRegionRight,
+            visible: this.dimmed,
             control: {
               type: 'slider',
               key: 'starEdgeBrightness',
@@ -161,6 +169,11 @@ export class SkywalkerSettingTab extends PluginSettingTab {
             name: strings.starfield.emptyTab,
             desc: strings.starfield.emptyTabDesc,
             control: { type: 'toggle', key: 'starRegionEmptyTab' },
+          },
+          {
+            name: strings.starfield.graph,
+            desc: strings.starfield.graphDesc,
+            control: { type: 'toggle', key: 'starRegionGraph' },
           },
           {
             name: strings.starfield.max,
