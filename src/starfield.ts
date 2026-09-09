@@ -1,4 +1,10 @@
-import { SkywalkerSettings } from '../settings';
+/*
+ * Skywalker Settings - Plugin for Obsidian
+ * Copyright (c) 2026 theLOOP
+ * SPDX-License-Identifier: MIT
+ */
+
+import type { SkywalkerSettings } from './settings';
 
 /**
  * A starfield drawn on canvas.
@@ -20,17 +26,25 @@ import { SkywalkerSettings } from '../settings';
  * that do blink go fully out rather than merely dimming.
  */
 
-const CANVAS_CLASS = 'loop-starfield';
-const BAND_CLASS = 'loop-starfield-band';
-const ACTIVE_CLASS = 'loop-starfield-active';
+const CANVAS_CLASS = 'loopsk-starfield';
+const BAND_CLASS = 'loopsk-starfield-band';
 
-/** Core size in px, halo reach in px, and the period band it blinks in.
- *
- *  The halo used to be a multiple of the size, which put a five-times lever on
- *  the size slider: at 190% the largest star reached 36.6px and came out as a
- *  smear seventy pixels across. It is an absolute distance now, growing with the
- *  square root of the scale so it still responds without running away. */
-const TIERS = [
+interface Tier {
+  /** Core diameter in px, before the size slider scales it. */
+  readonly size: number;
+  /** Halo reach in px beyond the core; zero for a bare point. */
+  readonly glow: number;
+  /** The band of blink periods, in seconds. */
+  readonly period: readonly [number, number];
+  /** Share of stars drawn from this tier, relative to the others. */
+  readonly weight: number;
+}
+
+/* The halo used to be a multiple of the size, which put a five-times lever on
+   the size slider: at 190% the largest star reached 36.6px and came out as a
+   smear seventy pixels across. It is an absolute distance now, growing with the
+   square root of the scale so it still responds without running away. */
+const TIERS: readonly [Tier, ...Tier[]] = [
   { size: 0.5, glow: 0, period: [1.2, 2.4], weight: 34 },
   { size: 1.0, glow: 0, period: [1.6, 3.0], weight: 30 },
   { size: 1.5, glow: 0, period: [2.0, 3.6], weight: 18 },
@@ -39,16 +53,20 @@ const TIERS = [
   { size: 3.5, glow: 4.0, period: [3.5, 6.5], weight: 2 },
 ];
 
+const LARGEST = TIERS.reduce((widest, tier) => (tier.size > widest.size ? tier : widest), TIERS[0]);
+
+const TOTAL_WEIGHT = TIERS.reduce((sum, tier) => sum + tier.weight, 0);
+
 interface Region {
-  selector: string;
-  enabled: (s: SkywalkerSettings) => boolean;
+  readonly selector: string;
+  readonly enabled: (settings: SkywalkerSettings) => boolean;
   /** The top strip is a band across the window rather than a pane. */
-  fixedBand?: boolean;
+  readonly fixedBand?: boolean;
   /** Dimmed against the top bar, so the edges stay in the background. */
-  edge?: boolean;
+  readonly edge?: boolean;
 }
 
-const REGIONS: Region[] = [
+const REGIONS: readonly Region[] = [
   { selector: 'body', enabled: (s) => s.starRegionTop, fixedBand: true },
   { selector: '.workspace-split.mod-left-split', enabled: (s) => s.starRegionLeft, edge: true },
   { selector: '.workspace-split.mod-right-split', enabled: (s) => s.starRegionRight, edge: true },
@@ -115,43 +133,49 @@ const sprites = new Map<string, HTMLCanvasElement>();
 
 /** Hex to `r, g, b`, so stops can carry their own alpha. */
 function channels(hex: string): string {
-  const h = hex.replace('#', '');
-  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  const n = parseInt(full.slice(0, 6), 16);
-  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+  const digits = hex.replace('#', '');
+  const full =
+    digits.length === 3
+      ? digits
+          .split('')
+          .map((digit) => digit + digit)
+          .join('')
+      : digits;
+  const packed = Number.parseInt(full.slice(0, 6), 16);
+  return `${(packed >> 16) & 255}, ${(packed >> 8) & 255}, ${packed & 255}`;
 }
 
 function sprite(size: number, glow: number, colour: string, dpr: number): HTMLCanvasElement {
   const key = `${size}|${glow}|${colour}|${dpr}`;
   const cached = sprites.get(key);
-  if (cached) return cached;
+  if (cached !== undefined) return cached;
 
   const radius = size / 2;
   const reach = Math.max(radius + glow, radius * 1.2);
   const side = Math.max(Math.ceil(reach * 2), 2);
-  const c = document.createElement('canvas');
-  c.width = Math.ceil(side * dpr);
-  c.height = Math.ceil(side * dpr);
+  const canvas = createEl('canvas');
+  canvas.width = Math.ceil(side * dpr);
+  canvas.height = Math.ceil(side * dpr);
 
-  const ctx = c.getContext('2d');
-  if (ctx) {
+  const ctx = canvas.getContext('2d');
+  if (ctx !== null) {
     ctx.scale(dpr, dpr);
     const mid = side / 2;
     if (glow > 0) {
-      // A straight ramp from solid to transparent spreads the light evenly over
-      // the whole radius and the star comes out a soft ball. box-shadow falls
-      // off like a Gaussian instead, with almost all of it gathered near the
-      // core, so these stops approximate that curve: mostly gone by a third of
-      // the way out, a faint halo the rest of the way.
+      /* A straight ramp from solid to transparent spreads the light evenly over
+         the whole radius and the star comes out a soft ball. box-shadow falls
+         off like a Gaussian instead, with almost all of it gathered near the
+         core, so these stops approximate that curve: mostly gone by a third of
+         the way out, a faint halo the rest of the way. */
       const rgb = channels(colour);
       const core = Math.min(radius / reach, 0.9);
-      const g = ctx.createRadialGradient(mid, mid, 0, mid, mid, reach);
-      g.addColorStop(0, `rgba(${rgb}, 1)`);
-      g.addColorStop(core, `rgba(${rgb}, 1)`);
-      g.addColorStop(core + (1 - core) * 0.18, `rgba(${rgb}, 0.34)`);
-      g.addColorStop(core + (1 - core) * 0.42, `rgba(${rgb}, 0.09)`);
-      g.addColorStop(1, `rgba(${rgb}, 0)`);
-      ctx.fillStyle = g;
+      const gradient = ctx.createRadialGradient(mid, mid, 0, mid, mid, reach);
+      gradient.addColorStop(0, `rgba(${rgb}, 1)`);
+      gradient.addColorStop(core, `rgba(${rgb}, 1)`);
+      gradient.addColorStop(core + (1 - core) * 0.18, `rgba(${rgb}, 0.34)`);
+      gradient.addColorStop(core + (1 - core) * 0.42, `rgba(${rgb}, 0.09)`);
+      gradient.addColorStop(1, `rgba(${rgb}, 0)`);
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, side, side);
     } else {
       ctx.fillStyle = colour;
@@ -161,17 +185,16 @@ function sprite(size: number, glow: number, colour: string, dpr: number): HTMLCa
     }
   }
 
-  sprites.set(key, c);
-  return c;
+  sprites.set(key, canvas);
+  return canvas;
 }
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-function pickTier() {
-  const total = TIERS.reduce((n, t) => n + t.weight, 0);
-  let roll = Math.random() * total;
+function pickTier(): Tier {
+  let roll = Math.random() * TOTAL_WEIGHT;
   for (const tier of TIERS) {
     roll -= tier.weight;
     if (roll <= 0) return tier;
@@ -187,13 +210,13 @@ function makeStar(settings: SkywalkerSettings): Star {
   const blinks = Math.random() * 100 < settings.starBlinkShare;
   const warm = Math.random() * 100 < settings.starWarmShare;
   const period = blinks ? rand(tier.period[0], tier.period[1]) / speed : 0;
-  const depth = size / (TIERS[TIERS.length - 1].size * scale);
+  const depth = size / (LARGEST.size * scale);
 
   return {
     x: Math.random(),
     y: Math.random(),
     size,
-    glow: tier.glow ? tier.glow * Math.sqrt(scale) : 0,
+    glow: tier.glow > 0 ? tier.glow * Math.sqrt(scale) : 0,
     colour: warm ? settings.starWarmColor : settings.starColor,
     rest: rand(0.35, 1),
     period,
@@ -204,6 +227,9 @@ function makeStar(settings: SkywalkerSettings): Star {
   };
 }
 
+/** Below this a star is indistinguishable from the background. */
+const INVISIBLE = 0.012;
+
 function draw(now: number): void {
   const seconds = stillSky() ? 0 : now / 1000;
   const dpr = ratio();
@@ -212,47 +238,43 @@ function draw(now: number): void {
     const { ctx } = field;
     ctx.clearRect(0, 0, field.width, field.height);
 
-    for (const star of stars(field)) {
-      // A blinking star goes fully out and back; the rest hold at their own
-      // brightness, which is what keeps the sky from reading as a chase.
+    for (const star of field.stars) {
+      /* A blinking star goes fully out and back; the rest hold at their own
+         brightness, which is what keeps the sky from reading as a chase. */
       let alpha = field.brightness * star.rest;
       if (star.period > 0) {
-        const t = (seconds + star.phase) / star.period;
-        alpha *= Math.abs(Math.cos(Math.PI * t));
+        alpha *= Math.abs(Math.cos((Math.PI * (seconds + star.phase)) / star.period));
       }
-      if (alpha < 0.012) continue;
+      if (alpha < INVISIBLE) continue;
 
       let x = star.x * field.width;
       if (star.drift > 0) {
-        const t = (seconds + star.driftPhase) / star.driftPeriod;
-        x += Math.sin(t * Math.PI * 2) * star.drift;
+        const turn = (seconds + star.driftPhase) / star.driftPeriod;
+        x += Math.sin(turn * Math.PI * 2) * star.drift;
       }
 
-      const img = sprite(star.size, star.glow, star.colour, dpr);
-      const side = img.width / dpr;
+      const image = sprite(star.size, star.glow, star.colour, dpr);
+      const side = image.width / dpr;
       ctx.globalAlpha = alpha;
-      ctx.drawImage(img, x - side / 2, star.y * field.height - side / 2, side, side);
+      ctx.drawImage(image, x - side / 2, star.y * field.height - side / 2, side, side);
     }
 
     ctx.globalAlpha = 1;
   }
 
-  // A still sky is drawn once. A hidden window is not drawn at all until it
-  // comes back, so nothing is spent painting what nobody is looking at.
-  frame = fields.length && !stillSky() && !document.hidden
-    ? window.requestAnimationFrame(draw)
-    : null;
+  /* A still sky is drawn once. A hidden window is not drawn at all until it
+     comes back, so nothing is spent painting what nobody is looking at. */
+  frame =
+    fields.length > 0 && !stillSky() && !document.hidden
+      ? window.requestAnimationFrame(draw)
+      : null;
 }
 
 /** Picks the loop back up after it stopped for a hidden window. */
 export function wakeStarfield(): void {
-  if (fields.length && frame === null && !stillSky() && !document.hidden) {
+  if (fields.length > 0 && frame === null && !stillSky() && !document.hidden) {
     frame = window.requestAnimationFrame(draw);
   }
-}
-
-function stars(field: Field): Star[] {
-  return field.stars;
 }
 
 function measure(field: Field): void {
@@ -270,10 +292,7 @@ function measure(field: Field): void {
 function wanted(field: Field, settings: SkywalkerSettings): number {
   const density = settings.starCount / (window.innerWidth * settings.starHeight);
   const spread = field.band ? 1 : EDGE_DENSITY;
-  return Math.min(
-    Math.round(density * field.width * field.height * spread),
-    settings.starMax
-  );
+  return Math.min(Math.round(density * field.width * field.height * spread), settings.starMax);
 }
 
 export function renderStarfield(settings: SkywalkerSettings): void {
@@ -291,12 +310,12 @@ export function renderStarfield(settings: SkywalkerSettings): void {
 
     for (const host of hosts) {
       const canvas = host.createEl('canvas', {
-        cls: region.fixedBand ? `${CANVAS_CLASS} ${BAND_CLASS}` : CANVAS_CLASS,
+        cls: region.fixedBand === true ? `${CANVAS_CLASS} ${BAND_CLASS}` : CANVAS_CLASS,
       });
       canvas.setAttribute('aria-hidden', 'true');
 
       const ctx = canvas.getContext('2d');
-      if (!ctx) {
+      if (ctx === null) {
         canvas.detach();
         continue;
       }
@@ -305,23 +324,19 @@ export function renderStarfield(settings: SkywalkerSettings): void {
         canvas,
         ctx,
         stars: [],
-        brightness: region.edge
-          ? (settings.starBrightness / 100) * (settings.starEdgeBrightness / 100)
-          : settings.starBrightness / 100,
+        brightness:
+          region.edge === true
+            ? (settings.starBrightness / 100) * (settings.starEdgeBrightness / 100)
+            : settings.starBrightness / 100,
         host,
-        band: !!region.fixedBand,
+        band: region.fixedBand === true,
         bandHeight: settings.starHeight,
         width: 0,
         height: 0,
       };
       measure(field);
 
-      if (field.width < 1 || field.height < 1) {
-        canvas.detach();
-        continue;
-      }
-
-      const count = wanted(field, settings);
+      const count = field.width < 1 || field.height < 1 ? 0 : wanted(field, settings);
       if (count < 1) {
         canvas.detach();
         continue;
@@ -332,28 +347,25 @@ export function renderStarfield(settings: SkywalkerSettings): void {
     }
   }
 
-  if (!fields.length) return;
-  document.body.addClass(ACTIVE_CLASS);
+  if (fields.length === 0) return;
   if (frame === null) frame = window.requestAnimationFrame(draw);
 }
 
 /**
  * A pane changed size. Stars are fractions of the canvas, so they keep their
  * arrangement and only the count moves — a wider pane shows more sky rather than
- * a different one.
+ * a different one. False means the panes themselves changed and the field has to
+ * be built again.
  */
 export function resizeStarfield(settings: SkywalkerSettings): boolean {
-  if (!fields.length) return false;
-  if (fields.some((f) => !f.host.isConnected)) return false;
+  if (fields.length === 0) return false;
+  if (fields.some((field) => !field.host.isConnected)) return false;
 
   for (const field of fields) {
     measure(field);
-    const count = wanted(field, settings);
-    if (count > field.stars.length) {
-      while (field.stars.length < count) field.stars.push(makeStar(settings));
-    } else if (count < field.stars.length) {
-      field.stars.length = Math.max(count, 0);
-    }
+    const count = Math.max(wanted(field, settings), 0);
+    while (field.stars.length < count) field.stars.push(makeStar(settings));
+    if (field.stars.length > count) field.stars.length = count;
   }
   return true;
 }
@@ -365,5 +377,4 @@ export function removeStarfield(): void {
     window.cancelAnimationFrame(frame);
     frame = null;
   }
-  document.body.removeClass(ACTIVE_CLASS);
 }
