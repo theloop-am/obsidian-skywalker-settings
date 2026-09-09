@@ -110,7 +110,20 @@ interface Field {
 }
 
 const fields: Field[] = [];
+/** The hosts the last build looked at, including any it declined to draw into. */
+let covered: HTMLElement[] = [];
 let frame: number | null = null;
+
+/** The elements the settings ask for a sky in, in the order the regions declare. */
+function hostsFor(settings: SkywalkerSettings): HTMLElement[] {
+  const hosts: HTMLElement[] = [];
+  for (const region of REGIONS) {
+    if (!region.enabled(settings)) continue;
+    if (region.selector === 'body') hosts.push(document.body);
+    else hosts.push(...Array.from(document.querySelectorAll<HTMLElement>(region.selector)));
+  }
+  return hosts;
+}
 
 /** Someone who has asked the system for less movement should get a still sky,
  *  not a stopped one: the stars stay, they simply hold their brightness. */
@@ -308,6 +321,8 @@ export function renderStarfield(settings: SkywalkerSettings): void {
         ? [document.body]
         : Array.from(document.querySelectorAll<HTMLElement>(region.selector));
 
+    covered.push(...hosts);
+
     for (const host of hosts) {
       const canvas = host.createEl('canvas', {
         cls: region.fixedBand === true ? `${CANVAS_CLASS} ${BAND_CLASS}` : CANVAS_CLASS,
@@ -361,6 +376,14 @@ export function resizeStarfield(settings: SkywalkerSettings): boolean {
   if (fields.length === 0) return false;
   if (fields.some((field) => !field.host.isConnected)) return false;
 
+  /* A pane that opened after the last build is a host nobody drew into, and no
+     existing field reports it: an empty tab gets no sky until the set is read
+     again. Compared against every host the build looked at, so a pane it
+     declined to draw into does not force a rebuild on every resize. */
+  const hosts = hostsFor(settings);
+  if (hosts.length !== covered.length) return false;
+  if (hosts.some((host, index) => host !== covered[index])) return false;
+
   for (const field of fields) {
     measure(field);
     const count = Math.max(wanted(field, settings), 0);
@@ -373,6 +396,7 @@ export function resizeStarfield(settings: SkywalkerSettings): boolean {
 export function removeStarfield(): void {
   for (const field of fields) field.canvas.detach();
   fields.length = 0;
+  covered = [];
   if (frame !== null) {
     window.cancelAnimationFrame(frame);
     frame = null;
