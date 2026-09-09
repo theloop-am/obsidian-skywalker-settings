@@ -6,7 +6,7 @@
    because Obsidian sets `.workspace-split.mod-horizontal > * { height: 0 }`,
    which outweighs a single class and collapsed the field into an invisible line
    along the top edge. */
-.loop-starfield {
+.loopsk-starfield {
   position: absolute;
   top: 0;
   left: 0;
@@ -17,16 +17,16 @@
 }
 
 /* Outweighs the core rule that zeroes the height of a split's children. */
-.workspace-split > .loop-starfield,
-.workspace-split.mod-horizontal > .loop-starfield,
-.workspace-split.mod-vertical > .loop-starfield {
+.workspace-split > .loopsk-starfield,
+.workspace-split.mod-horizontal > .loopsk-starfield,
+.workspace-split.mod-vertical > .loopsk-starfield {
   height: 100%;
   flex: none;
 }
 
 /* The top strip is not a pane, so it is a fixed band across the window. Its
    height comes from the canvas element itself. */
-.loop-starfield-band {
+.loopsk-starfield-band {
   position: fixed;
   top: 0;
   left: 0;
@@ -34,6 +34,123 @@
 }
 
 /* Light mode is not a night sky. */
-body.theme-light .loop-starfield {
+body.theme-light .loopsk-starfield {
   display: none;
+}
+
+/* ── Life calendar ─────────────────────────────────────────────────────── */
+.loopsk-lifegrid-host {
+  padding-top: var(--header-height);
+  gap: 48px;
+}
+
+.loopsk-lifegrid-host > .empty-state-container {
+  margin-block: 0;
+}
+
+.loopsk-lifegrid-bare > .empty-state-container {
+  display: none;
+}
+
+.loopsk-lifegrid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  --loopsk-lifegrid-tint: var(--text-normal);
+  --loopsk-lifegrid-mark: var(--color-accent);
+  --loopsk-lifegrid-past: color-mix(in srgb, var(--loopsk-lifegrid-tint) 31%, transparent);
+  --loopsk-lifegrid-future: color-mix(in srgb, var(--loopsk-lifegrid-tint) 11%, transparent);
+  --loopsk-lifegrid-edge: color-mix(in srgb, var(--loopsk-lifegrid-tint) 46%, transparent);
+  --loopsk-lifegrid-now: var(--loopsk-lifegrid-mark);
+}
+
+.loopsk-lifegrid.mod-accent {
+  --loopsk-lifegrid-tint: var(--color-accent);
+}
+
+.loopsk-lifegrid.mod-custom {
+  --loopsk-lifegrid-mark: var(--loopsk-lifegrid-tint);
+}
+
+.loopsk-lifegrid-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--loopsk-lifegrid-gap);
+  opacity: var(--loopsk-lifegrid-strength, 1);
+}
+
+.loopsk-lifegrid-row {
+  position: relative;
+  display: flex;
+  gap: var(--loopsk-lifegrid-gap);
+}
+
+.loopsk-lifegrid-row.mod-decade {
+  margin-top: calc(var(--loopsk-lifegrid-gap) * 2);
+}
+
+.loopsk-lifegrid-row[data-age]::before {
+  content: attr(data-age);
+  position: absolute;
+  right: calc(100% + 1.2em);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.loopsk-lifegrid-cell {
+  width: var(--loopsk-lifegrid-cell);
+  height: var(--loopsk-lifegrid-cell);
+  border-radius: max(1px, calc(var(--loopsk-lifegrid-cell) * 0.22));
+  background-color: var(--loopsk-lifegrid-future);
+}
+
+.loopsk-lifegrid-cell.is-past {
+  background-color: var(--loopsk-lifegrid-past);
+}
+
+.loopsk-lifegrid-cell.is-now {
+  background-color: var(--loopsk-lifegrid-now);
+  box-shadow: 0 0 calc(var(--loopsk-lifegrid-cell) * 0.8) var(--loopsk-lifegrid-now);
+}
+
+.loopsk-lifegrid-cell.is-decade {
+  box-shadow: 0 0 0 1px var(--background-primary), 0 0 0 2px var(--loopsk-lifegrid-edge);
+}
+
+.loopsk-lifegrid-caption {
+  margin-top: 1.6em;
+  opacity: var(--loopsk-lifegrid-text, 0.7);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.loopsk-lifegrid-day {
+  font-size: var(--font-ui-medium);
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.loopsk-lifegrid-progress {
+  margin-top: 0.5em;
+  font-size: var(--font-ui-small);
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+
+.loopsk-lifegrid-stamp {
+  margin-top: 0.25em;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  opacity: 0.75;
+  letter-spacing: 0.06em;
+}
+
+.loopsk-lifegrid-date {
+  font-family: inherit;
 }
