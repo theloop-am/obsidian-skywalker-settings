@@ -11,7 +11,7 @@ import { removeLifeGrid, renderLifeGrid } from './lifegrid';
 import { notify } from './logging';
 import { PRESET_IDS } from './presets';
 import { LAYOUTS, normalise, type SkywalkerSettings } from './settings';
-import { removeStarfield, renderStarfield, resizeStarfield, wakeStarfield } from './starfield';
+import { removeStarfield, renderStarfield, syncStarfield, wakeStarfield } from './starfield';
 import { layoutOptions } from './ui/labels';
 import { SkywalkerSettingTab } from './ui/settings';
 
@@ -92,12 +92,12 @@ export default class SkywalkerSettingsPlugin extends Plugin {
   }
 
   /**
-   * The panes moved. A pane that only changed size keeps its stars; only a pane
-   * coming or going makes the field worth building again. The images are left
+   * The panes moved. The sky is brought into line with them rather than built
+   * again, so a pane that only changed size keeps its stars. The images are left
    * alone - a resize cannot change which file a setting points at.
    */
   private reflow(): void {
-    if (!resizeStarfield(this.settings)) renderStarfield(this.settings);
+    syncStarfield(this.settings);
     renderLifeGrid(this.settings);
   }
 
