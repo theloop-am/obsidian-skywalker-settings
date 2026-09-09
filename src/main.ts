@@ -1,23 +1,32 @@
-import { App, Plugin, PluginSettingTab, Setting, SettingDefinitionItem, TFile } from 'obsidian';
-import { SkywalkerSettings, DEFAULT_SETTINGS } from './settings';
-import { renderStarfield, removeStarfield, resizeStarfield, wakeStarfield } from './utils/starfield';
-import { applyAssets, clearAssets, IMAGE_EXTENSIONS } from './utils/assets';
-import { PRESETS, CUSTOM_PRESET, presetOptions, findPreset, matchesPreset, PresetValues } from './presets';
+/*
+ * Skywalker Settings - Plugin for Obsidian
+ * Copyright (c) 2026 theLOOP
+ * SPDX-License-Identifier: MIT
+ */
 
-const COMPANION_CLASS = 'loop-skywalker-companion';
+import { Plugin } from 'obsidian';
+import { applyAssets, clearAssets } from './assets';
+import { strings } from './i18n/index';
+import { removeLifeGrid, renderLifeGrid } from './lifegrid';
+import { notify } from './logging';
+import { PRESET_IDS } from './presets';
+import { LAYOUTS, normalise, type SkywalkerSettings } from './settings';
+import { removeStarfield, renderStarfield, resizeStarfield, wakeStarfield } from './starfield';
+import { layoutOptions } from './ui/labels';
+import { SkywalkerSettingTab } from './ui/settings';
+
+/** Dragging a divider fires continuously; rebuilding on each of those is
+ *  pointless. This is how long the layout has to hold still first. */
 const SETTLE_MS = 120;
 
 export default class SkywalkerSettingsPlugin extends Plugin {
-  settings: SkywalkerSettings;
-  tab: SkywalkerSettingTab;
+  /* Declared `unknown` upstream, so a plugin can name its own shape. */
+  override settings: SkywalkerSettings = normalise({}, PRESET_IDS);
+  private tab: SkywalkerSettingTab | null = null;
   private settleTimer: number | null = null;
 
-  async onload() {
+  override async onload(): Promise<void> {
     await this.loadSettings();
-
-    // Lets the theme stand down where this plugin does the same job better, so
-    // the two never draw the same thing twice.
-    document.body.addClass(COMPANION_CLASS);
 
     this.app.workspace.onLayoutReady(() => {
       this.refresh();
@@ -41,7 +50,7 @@ export default class SkywalkerSettingsPlugin extends Plugin {
 
     this.addCommand({
       id: 'toggle-starfield',
-      name: 'Toggle starfield',
+      name: strings.commands.toggleStarfield,
       callback: async () => {
         this.settings.starfieldEnabled = !this.settings.starfieldEnabled;
         await this.saveSettings();
@@ -50,21 +59,53 @@ export default class SkywalkerSettingsPlugin extends Plugin {
 
     this.addCommand({
       id: 'rearrange-starfield',
-      name: 'Rearrange starfield',
+      name: strings.commands.rearrangeStarfield,
       callback: () => renderStarfield(this.settings),
+    });
+
+    this.addCommand({
+      id: 'cycle-life-calendar-layout',
+      name: strings.commands.nextLayout,
+      callback: async () => {
+        const next = LAYOUTS[(LAYOUTS.indexOf(this.settings.lifeGridLayout) + 1) % LAYOUTS.length];
+        if (next === undefined) return;
+        this.settings.lifeGridLayout = next;
+        await this.saveSettings();
+        this.tab?.update();
+        notify(strings.commands.layoutNow.replace('{layout}', layoutOptions[next]));
+      },
     });
   }
 
-  /** Dragging a divider fires continuously, and rebuilding hundreds of elements
-   *  on each of those is pointless. Wait for it to settle. */
+  override onunload(): void {
+    this.cancel();
+    removeStarfield();
+    removeLifeGrid();
+    clearAssets();
+  }
+
+  /** Everything the plugin draws, from the settings it holds. */
+  refresh(): void {
+    renderStarfield(this.settings);
+    renderLifeGrid(this.settings);
+    applyAssets(this.app, this.settings);
+  }
+
+  /**
+   * The panes moved. A pane that only changed size keeps its stars; only a pane
+   * coming or going makes the field worth building again. The images are left
+   * alone - a resize cannot change which file a setting points at.
+   */
+  private reflow(): void {
+    if (!resizeStarfield(this.settings)) renderStarfield(this.settings);
+    renderLifeGrid(this.settings);
+  }
+
   private schedule(): void {
     this.cancel();
     this.settleTimer = window.setTimeout(() => {
       this.settleTimer = null;
-      // A pane that only changed size keeps its stars; the canvas is remeasured
-      // and the count adjusted. Only when a pane has come or gone is everything
-      // built again.
-      if (!resizeStarfield(this.settings)) this.refresh();
+      this.reflow();
     }, SETTLE_MS);
   }
 
@@ -75,300 +116,12 @@ export default class SkywalkerSettingsPlugin extends Plugin {
     }
   }
 
-  onunload() {
-    this.cancel();
-    removeStarfield();
-    clearAssets();
-    document.body.removeClass(COMPANION_CLASS);
+  async loadSettings(): Promise<void> {
+    this.settings = normalise(await this.loadData(), PRESET_IDS);
   }
 
-  refresh() {
-    renderStarfield(this.settings);
-    applyAssets(this.app, this.settings);
-  }
-
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-  }
-
-  async saveSettings() {
+  async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
     this.refresh();
   }
 }
-
-const isImage = (file: TFile) => IMAGE_EXTENSIONS.includes(file.extension.toLowerCase());
-const percent = (value: number) => `${value}%`;
-const pixels = (value: number) => `${value}px`;
-
-/** Sliders a preset owns. Moving one of these drops the preset to Custom. */
-const PRESET_KEYS: (keyof PresetValues)[] = [
-  'starCount',
-  'starScale',
-  'starBlinkShare',
-  'starSpeed',
-  'starBrightness',
-  'starWarmShare',
-];
-
-class SkywalkerSettingTab extends PluginSettingTab {
-  constructor(app: App, private plugin: SkywalkerSettingsPlugin) {
-    super(app, plugin);
-  }
-
-  getControlValue(key: string): unknown {
-    return this.plugin.settings[key as keyof SkywalkerSettings];
-  }
-
-  /**
-   * The base class persists the value and stops there, which would leave the
-   * sky on screen showing the previous settings. Redrawing has to happen here.
-   */
-  async setControlValue(key: string, value: unknown): Promise<void> {
-    const settings = this.plugin.settings as unknown as Record<string, unknown>;
-    settings[key] = value;
-
-    if (key === 'starPreset') {
-      const preset = findPreset(String(value));
-      if (preset) Object.assign(this.plugin.settings, preset.values);
-    } else if (PRESET_KEYS.includes(key as keyof PresetValues)) {
-      // A preset is a claim about what is on screen. Once a slider it owns
-      // moves, the claim is false, so stop making it.
-      if (!matchesPreset(this.plugin.settings, this.plugin.settings.starPreset)) {
-        this.plugin.settings.starPreset = CUSTOM_PRESET;
-      }
-    }
-
-    await this.plugin.saveSettings();
-    this.update();
-  }
-
-  private custom = () => this.plugin.settings.starPreset === CUSTOM_PRESET;
-
-  getSettingDefinitions(): SettingDefinitionItem[] {
-    return [
-      {
-        type: 'group',
-        heading: 'Starfield',
-        items: [
-          {
-            name: 'Starfield',
-            desc: 'Stars across the top of the window. Dark mode only.',
-            control: { type: 'toggle', key: 'starfieldEnabled' },
-          },
-          {
-            name: 'Style',
-            desc: 'Presets set the sky, the twinkle and the warmth. Moving any of those yourself switches this to Custom.',
-            control: {
-              type: 'dropdown',
-              key: 'starPreset',
-              options: presetOptions,
-              defaultValue: DEFAULT_SETTINGS.starPreset,
-            },
-          },
-          {
-            name: 'Top of the window',
-            control: { type: 'toggle', key: 'starRegionTop' },
-          },
-          {
-            name: 'Left sidebar',
-            control: { type: 'toggle', key: 'starRegionLeft' },
-          },
-          {
-            name: 'Right sidebar',
-            control: { type: 'toggle', key: 'starRegionRight' },
-          },
-          {
-            name: 'Sidebar brightness',
-            desc: 'Sidebars are dimmed against the top, so they stay in the background.',
-            visible: () => this.plugin.settings.starRegionLeft || this.plugin.settings.starRegionRight,
-            control: {
-              type: 'slider',
-              key: 'starEdgeBrightness',
-              min: 5,
-              max: 100,
-              step: 5,
-              displayFormat: percent,
-            },
-          },
-          {
-            name: 'Parallax',
-            desc: 'Nearer stars drift further than distant ones. Very slow, and off by default.',
-            control: {
-              type: 'slider',
-              key: 'starDrift',
-              min: 0,
-              max: 30,
-              step: 1,
-              displayFormat: (value: number) => (value === 0 ? 'Off' : `${value}px`),
-            },
-          },
-          {
-            name: 'Height',
-            desc: 'How far down from the top the stars reach. Sidebars fill their own height.',
-            control: {
-              type: 'slider',
-              key: 'starHeight',
-              min: 24,
-              max: 200,
-              step: 2,
-              displayFormat: pixels,
-            },
-          },
-          {
-            name: 'Show on empty tabs',
-            desc: 'Obsidian\u2019s New tab pane, where there is nothing to read.',
-            control: { type: 'toggle', key: 'starRegionEmptyTab' },
-          },
-          {
-            name: 'Most stars in one area',
-            desc: 'A ceiling, so a large display does not end up with thousands of them. Raise it if the panes look sparser than the top bar.',
-            control: {
-              type: 'slider',
-              key: 'starMax',
-              min: 100,
-              max: 4000,
-              step: 100,
-            },
-          },
-          {
-            name: 'Rearrange stars',
-            desc: 'Scatter them into a new arrangement.',
-            render: (setting: Setting) => {
-              setting.addButton((button) =>
-                button.setButtonText('Rearrange').onClick(() => renderStarfield(this.plugin.settings))
-              );
-            },
-          },
-        ],
-      },
-      {
-        type: 'group',
-        heading: 'Sky',
-        visible: this.custom,
-        items: [
-          {
-            name: 'Stars',
-            desc: 'How many stars in the sky.',
-            control: { type: 'slider', key: 'starCount', min: 10, max: 600, step: 10 },
-          },
-          {
-            name: 'Size',
-            desc: 'Scales every star. Larger stars glow, smaller ones do not.',
-            control: {
-              type: 'slider',
-              key: 'starScale',
-              min: 40,
-              max: 300,
-              step: 10,
-              displayFormat: percent,
-            },
-          },
-          {
-            name: 'Brightness',
-            control: {
-              type: 'slider',
-              key: 'starBrightness',
-              min: 10,
-              max: 100,
-              step: 5,
-              displayFormat: percent,
-            },
-          },
-        ],
-      },
-      {
-        type: 'group',
-        heading: 'Twinkle',
-        visible: this.custom,
-        items: [
-          {
-            name: 'Stars that twinkle',
-            desc: 'The rest stay lit.',
-            control: {
-              type: 'slider',
-              key: 'starBlinkShare',
-              min: 0,
-              max: 100,
-              step: 5,
-              displayFormat: percent,
-            },
-          },
-          {
-            name: 'Twinkle speed',
-            control: {
-              type: 'slider',
-              key: 'starSpeed',
-              min: 25,
-              max: 300,
-              step: 5,
-              displayFormat: percent,
-            },
-          },
-        ],
-      },
-      {
-        type: 'group',
-        heading: 'Star color',
-        items: [
-          {
-            name: 'Stars',
-            control: { type: 'color', key: 'starColor' },
-          },
-          {
-            name: 'Warm stars',
-            desc: 'A second color, for variation.',
-            control: { type: 'color', key: 'starWarmColor' },
-          },
-          {
-            name: 'How many are warm',
-            visible: this.custom,
-            control: {
-              type: 'slider',
-              key: 'starWarmShare',
-              min: 0,
-              max: 100,
-              step: 5,
-              displayFormat: percent,
-            },
-          },
-        ],
-      },
-      {
-        type: 'group',
-        heading: 'Logos',
-        items: [
-          {
-            name: 'Sidebar logo',
-            desc: 'Shown instead of the vault name. Single-color SVGs take on the theme’s colors.',
-            control: {
-              type: 'file',
-              key: 'vaultLogoPath',
-              placeholder: 'Choose an image',
-              filter: isImage,
-            },
-          },
-          {
-            name: 'Banner logo',
-            desc: 'Shown over the banner image set in Notebook Navigator.',
-            control: {
-              type: 'file',
-              key: 'bannerLogoPath',
-              placeholder: 'Choose an image',
-              filter: isImage,
-            },
-          },
-        ],
-      },
-    ];
-  }
-}
-
-// Keeps the preset list honest: every preset must set every key a preset owns.
-PRESETS.forEach((preset) => {
-  for (const key of PRESET_KEYS) {
-    if (preset.values[key] === undefined) {
-      throw new Error(`Preset ${preset.id} is missing ${key}`);
-    }
-  }
-});
