@@ -46,15 +46,19 @@ describe('normalise', () => {
   });
 
   describe('numbers', () => {
-    it.each(NUMERIC)('clamps %s to its slider', (key) => {
-      const { min, max } = RANGES[key];
-      expect(normalise({ [key]: max + 1_000_000 }, PRESET_IDS)[key]).toBe(max);
-      expect(normalise({ [key]: min - 1_000_000 }, PRESET_IDS)[key]).toBe(min);
+    it('clamps every slider to its own extent', () => {
+      for (const key of NUMERIC) {
+        const { min, max } = RANGES[key];
+        expect(normalise({ [key]: max + 1_000_000 }, PRESET_IDS)[key], key).toBe(max);
+        expect(normalise({ [key]: min - 1_000_000 }, PRESET_IDS)[key], key).toBe(min);
+      }
     });
 
-    it.each(NUMERIC)('falls back for %s when the value is not a number', (key) => {
-      for (const junk of ['70', null, {}, Number.NaN, Number.POSITIVE_INFINITY]) {
-        expect(normalise({ [key]: junk }, PRESET_IDS)[key]).toBe(DEFAULT_SETTINGS[key]);
+    it('falls back for every slider when the value is not a number', () => {
+      for (const key of NUMERIC) {
+        for (const junk of ['70', null, {}, Number.NaN, Number.POSITIVE_INFINITY]) {
+          expect(normalise({ [key]: junk }, PRESET_IDS)[key], key).toBe(DEFAULT_SETTINGS[key]);
+        }
       }
     });
 
@@ -154,11 +158,13 @@ describe('RANGES', () => {
     expect(new Set(NUMERIC)).toEqual(new Set(numeric));
   });
 
-  it.each(NUMERIC)('holds a usable slider for %s', (key) => {
-    const { min, max, step } = RANGES[key];
-    expect(min).toBeLessThan(max);
-    expect(step).toBeGreaterThan(0);
-    expect(DEFAULT_SETTINGS[key]).toBeGreaterThanOrEqual(min);
-    expect(DEFAULT_SETTINGS[key]).toBeLessThanOrEqual(max);
+  it('holds a usable slider for every numeric setting', () => {
+    for (const key of NUMERIC) {
+      const { min, max, step } = RANGES[key];
+      expect(min, key).toBeLessThan(max);
+      expect(step, key).toBeGreaterThan(0);
+      expect(DEFAULT_SETTINGS[key], key).toBeGreaterThanOrEqual(min);
+      expect(DEFAULT_SETTINGS[key], key).toBeLessThanOrEqual(max);
+    }
   });
 });
