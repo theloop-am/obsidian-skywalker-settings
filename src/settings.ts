@@ -16,6 +16,7 @@ export interface SkywalkerSettings {
   starRegionLeft: boolean;
   starRegionRight: boolean;
   starRegionEmptyTab: boolean;
+  starRegionGraph: boolean;
   starEdgeBrightness: number;
   starDrift: number;
   starCount: number;
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: SkywalkerSettings = {
   starRegionLeft: false,
   starRegionRight: false,
   starRegionEmptyTab: false,
+  starRegionGraph: false,
   starEdgeBrightness: 45,
   starDrift: 0,
   starCount: 70,
@@ -166,6 +168,7 @@ export function normalise(raw: unknown, presets: string[]): SkywalkerSettings {
     starRegionLeft: boolean(stored.starRegionLeft, DEFAULT_SETTINGS.starRegionLeft),
     starRegionRight: boolean(stored.starRegionRight, DEFAULT_SETTINGS.starRegionRight),
     starRegionEmptyTab: boolean(stored.starRegionEmptyTab, DEFAULT_SETTINGS.starRegionEmptyTab),
+    starRegionGraph: boolean(stored.starRegionGraph, DEFAULT_SETTINGS.starRegionGraph),
     starEdgeBrightness: number(stored.starEdgeBrightness, 'starEdgeBrightness'),
     starDrift: number(stored.starDrift, 'starDrift'),
     starCount: number(stored.starCount, 'starCount'),

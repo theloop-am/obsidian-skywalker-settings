@@ -28,6 +28,7 @@ import type { SkywalkerSettings } from './settings';
 
 const CANVAS_CLASS = 'loopsk-starfield';
 const BAND_CLASS = 'loopsk-starfield-band';
+const BENEATH_CLASS = 'loopsk-starfield-beneath';
 
 interface Tier {
   /** Core diameter in px, before the size slider scales it. */
@@ -64,6 +65,8 @@ interface Region {
   readonly fixedBand?: boolean;
   /** Dimmed against the top bar, so the edges stay in the background. */
   readonly edge?: boolean;
+  /** Placed under whatever the pane already draws, rather than over it. */
+  readonly beneath?: boolean;
 }
 
 const REGIONS: readonly Region[] = [
@@ -74,6 +77,21 @@ const REGIONS: readonly Region[] = [
     selector: '.workspace-leaf-content[data-type="empty"] .view-content',
     enabled: (s) => s.starRegionEmptyTab,
     edge: true,
+  },
+  /* The graph paints its nodes on a canvas it leaves transparent, so a sky
+     placed under it shows between them. Both views, since the local graph is
+     the same renderer in a sidebar. */
+  {
+    selector: '.workspace-leaf-content[data-type="graph"] .view-content',
+    enabled: (s) => s.starRegionGraph,
+    edge: true,
+    beneath: true,
+  },
+  {
+    selector: '.workspace-leaf-content[data-type="localgraph"] .view-content',
+    enabled: (s) => s.starRegionGraph,
+    edge: true,
+    beneath: true,
   },
 ];
 
@@ -324,10 +342,15 @@ export function renderStarfield(settings: SkywalkerSettings): void {
     covered.push(...hosts);
 
     for (const host of hosts) {
-      const canvas = host.createEl('canvas', {
-        cls: region.fixedBand === true ? `${CANVAS_CLASS} ${BAND_CLASS}` : CANVAS_CLASS,
-      });
+      const classes = [CANVAS_CLASS];
+      if (region.fixedBand === true) classes.push(BAND_CLASS);
+      if (region.beneath === true) classes.push(BENEATH_CLASS);
+
+      const canvas = host.createEl('canvas', { cls: classes.join(' ') });
       canvas.setAttribute('aria-hidden', 'true');
+      /* Painting order among positioned siblings is document order, so a sky
+         that belongs under the pane's own canvas has to be inserted before it. */
+      if (region.beneath === true) host.insertBefore(canvas, host.firstChild);
 
       const ctx = canvas.getContext('2d');
       if (ctx === null) {

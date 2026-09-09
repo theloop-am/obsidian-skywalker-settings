@@ -24,6 +24,12 @@
   flex: none;
 }
 
+/* The graph draws on a transparent canvas of its own, so the sky sits under it
+   rather than in front of the nodes. */
+.loopsk-starfield-beneath {
+  z-index: 0;
+}
+
 /* The top strip is not a pane, so it is a fixed band across the window. Its
    height comes from the canvas element itself. */
 .loopsk-starfield-band {
