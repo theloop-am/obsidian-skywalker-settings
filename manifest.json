@@ -1,10 +1,10 @@
 {
-  "id": "loop-skywalker-settings",
-  "name": "LOOP - Skywalker Settings",
+  "id": "skywalker-settings",
+  "name": "Skywalker Settings",
   "version": "0.1.0",
   "minAppVersion": "1.13.0",
-  "description": "Companion for the LOOP - Skywalker theme. Adds what CSS alone cannot do: a real starfield, and vault images exposed to the theme as CSS variables.",
+  "description": "Companion for the Skywalker theme. Adds what CSS alone cannot do: a canvas starfield, a life calendar on empty tabs, and vault images handed to the theme as CSS variables.",
   "author": "theLOOP",
-  "authorUrl": "https://github.com/theloop-am/loop-skywalker-settings",
+  "authorUrl": "https://github.com/theloop-am",
   "isDesktopOnly": false
 }
