@@ -1,18 +1,41 @@
 {
-  "name": "loop-skywalker-settings",
+  "name": "obsidian-skywalker-settings",
   "version": "0.1.0",
-  "description": "Companion plugin for the LOOP - Skywalker Obsidian theme",
-  "main": "main.js",
+  "description": "Companion for the Skywalker theme for Obsidian.",
+  "author": "theLOOP (https://github.com/theloop-am)",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theloop-am/obsidian-skywalker-settings.git"
+  },
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "license": "MIT",
   "devDependencies": {
-    "@types/node": "^16.11.6",
-    "esbuild": "^0.27.1",
-    "obsidian": "^1.13.1",
-    "tslib": "2.3.1",
-    "typescript": "^5.5.3"
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.3",
+    "@vitest/coverage-v8": "5.0.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.10.0",
+    "eslint-plugin-obsidianmd": "0.4.2",
+    "fast-check": "4.9.0",
+    "globals": "17.12.0",
+    "jsdom": "30.0.1",
+    "knip": "6.35.0",
+    "obsidian": "1.13.1",
+    "stylelint": "17.6.0",
+    "stylelint-no-unsupported-browser-features": "8.1.1",
+    "tslib": "2.8.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.0"
+  },
+  "dependencies": {
+    "date-fns": "4.4.0"
   }
 }

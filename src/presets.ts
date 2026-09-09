@@ -1,4 +1,11 @@
-import { SkywalkerSettings } from './settings';
+/*
+ * Skywalker Settings - Plugin for Obsidian
+ * Copyright (c) 2026 theLOOP
+ * SPDX-License-Identifier: MIT
+ */
+
+import { strings } from './i18n/index';
+import type { SkywalkerSettings } from './settings';
 
 /** The values a preset fixes. Everything else stays as the user left it. */
 export type PresetValues = Pick<
@@ -7,17 +14,28 @@ export type PresetValues = Pick<
 >;
 
 export interface Preset {
-  id: string;
-  name: string;
-  desc: string;
-  values: PresetValues;
+  readonly id: string;
+  readonly name: string;
+  readonly values: PresetValues;
 }
+
+/* A record, so a key added to PresetValues and forgotten here fails to compile. */
+const OWNED: Record<keyof PresetValues, true> = {
+  starCount: true,
+  starScale: true,
+  starBlinkShare: true,
+  starSpeed: true,
+  starBrightness: true,
+  starWarmShare: true,
+};
+
+/** Sliders a preset owns. Moving one of these drops the preset to Custom. */
+export const PRESET_KEYS = Object.keys(OWNED) as (keyof PresetValues)[];
 
 export const PRESETS: Preset[] = [
   {
     id: 'headliner',
-    name: 'Headliner',
-    desc: 'Sparse and calm, like the roof of a car.',
+    name: strings.presets.headliner,
     values: {
       starCount: 70,
       starScale: 110,
@@ -29,8 +47,7 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'deep-sky',
-    name: 'Deep sky',
-    desc: 'Dense and almost still, the way a clear night actually looks.',
+    name: strings.presets.deepSky,
     values: {
       starCount: 320,
       starScale: 80,
@@ -42,8 +59,7 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'sparkle',
-    name: 'Sparkle',
-    desc: 'Fewer stars, most of them blinking, quickly.',
+    name: strings.presets.sparkle,
     values: {
       starCount: 90,
       starScale: 130,
@@ -55,8 +71,7 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'embers',
-    name: 'Embers',
-    desc: 'Large, slow and warm.',
+    name: strings.presets.embers,
     values: {
       starCount: 45,
       starScale: 190,
@@ -70,13 +85,16 @@ export const PRESETS: Preset[] = [
 
 export const CUSTOM_PRESET = 'custom';
 
+/** Every value the preset dropdown will accept, Custom included. */
+export const PRESET_IDS: string[] = [...PRESETS.map((preset) => preset.id), CUSTOM_PRESET];
+
 export const presetOptions: Record<string, string> = {
-  ...Object.fromEntries(PRESETS.map((p) => [p.id, p.name])),
-  [CUSTOM_PRESET]: 'Custom',
+  ...Object.fromEntries(PRESETS.map((preset) => [preset.id, preset.name])),
+  [CUSTOM_PRESET]: strings.presets.custom,
 };
 
 export function findPreset(id: string): Preset | undefined {
-  return PRESETS.find((p) => p.id === id);
+  return PRESETS.find((preset) => preset.id === id);
 }
 
 /**
@@ -86,8 +104,6 @@ export function findPreset(id: string): Preset | undefined {
  */
 export function matchesPreset(settings: SkywalkerSettings, id: string): boolean {
   const preset = findPreset(id);
-  if (!preset) return false;
-  return (Object.keys(preset.values) as (keyof PresetValues)[]).every(
-    (key) => settings[key] === preset.values[key]
-  );
+  if (preset === undefined) return false;
+  return PRESET_KEYS.every((key) => settings[key] === preset.values[key]);
 }
