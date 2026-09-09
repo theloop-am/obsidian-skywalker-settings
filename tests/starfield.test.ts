@@ -6,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, type SkywalkerSettings } from '../src/settings';
-import { removeStarfield, renderStarfield, resizeStarfield, wakeStarfield } from '../src/starfield';
+import { removeStarfield, renderStarfield, syncStarfield, wakeStarfield } from '../src/starfield';
 import { drawnOn, setPixelRatio, setRect, setReducedMotion, setWindowWidth } from './setup';
 
 const WIDTH = 1000;
@@ -271,9 +271,16 @@ describe('drawing', () => {
   });
 });
 
-describe('resizeStarfield', () => {
-  it('reports nothing to resize when no sky is drawn', () => {
-    expect(resizeStarfield(on())).toBe(false);
+describe('syncStarfield', () => {
+  it('draws the sky when none was drawn yet', () => {
+    syncStarfield(on());
+    expect(canvases()).toHaveLength(1);
+  });
+
+  it('draws nothing when the sky is switched off', () => {
+    renderStarfield(on());
+    syncStarfield({ ...on(), starfieldEnabled: false });
+    expect(canvases()).toHaveLength(0);
   });
 
   it('keeps the sky and adjusts the count when a pane grows', () => {
@@ -285,7 +292,7 @@ describe('resizeStarfield', () => {
     const before = starsOn(canvas);
 
     setRect(pane, 600, 800);
-    expect(resizeStarfield(on({ starRegionTop: false, starRegionLeft: true }))).toBe(true);
+    syncStarfield(on({ starRegionTop: false, starRegionLeft: true }));
     frame();
 
     expect(starsOn(canvas) - before).toBeGreaterThan(before);
@@ -301,34 +308,73 @@ describe('resizeStarfield', () => {
     const before = starsOn(canvas);
 
     setRect(pane, 200, 200);
-    resizeStarfield(on({ starRegionTop: false, starRegionLeft: true }));
+    syncStarfield(on({ starRegionTop: false, starRegionLeft: true }));
     frame();
 
     expect(starsOn(canvas) - before).toBeLessThan(before);
   });
 
-  it('asks to be built again once a pane it should draw into has appeared', () => {
+  it('draws into a pane that appeared after the sky was built', () => {
     renderStarfield(on({ starRegionTop: true, starRegionLeft: true }));
     expect(canvases()).toHaveLength(1);
 
     sidebar('left');
+    syncStarfield(on({ starRegionTop: true, starRegionLeft: true }));
 
-    expect(resizeStarfield(on({ starRegionTop: true, starRegionLeft: true }))).toBe(false);
+    expect(canvases()).toHaveLength(2);
   });
 
-  it('asks to be built again once a region is switched on', () => {
+  it('draws into a region the moment it is switched on', () => {
     sidebar('left');
     renderStarfield(on({ starRegionTop: true, starRegionLeft: false }));
     expect(canvases()).toHaveLength(1);
 
-    expect(resizeStarfield(on({ starRegionTop: true, starRegionLeft: true }))).toBe(false);
+    syncStarfield(on({ starRegionTop: true, starRegionLeft: true }));
+
+    expect(canvases()).toHaveLength(2);
   });
 
-  it('asks to be built again once a pane it drew into has gone', () => {
+  it('draws into a pane that was hidden behind another tab and then shown', () => {
+    const hidden = graphPane('graph', 0, 0);
+    renderStarfield(on({ starRegionTop: true, starRegionGraph: true }));
+    expect(canvases()).toHaveLength(1);
+
+    setRect(hidden, 900, 700);
+    syncStarfield(on({ starRegionTop: true, starRegionGraph: true }));
+
+    expect(canvases()).toHaveLength(2);
+  });
+
+  it('keeps the sky it has while a pane stays hidden', () => {
+    graphPane('graph', 0, 0);
+    renderStarfield(on({ starRegionTop: true, starRegionGraph: true }));
+    const [canvas] = canvases();
+
+    syncStarfield(on({ starRegionTop: true, starRegionGraph: true }));
+
+    expect(canvases()).toHaveLength(1);
+    expect(canvases()[0]).toBe(canvas);
+  });
+
+  it('takes the sky away from a region that was switched off', () => {
+    sidebar('left');
+    renderStarfield(on({ starRegionTop: true, starRegionLeft: true }));
+    expect(canvases()).toHaveLength(2);
+
+    syncStarfield(on({ starRegionTop: true, starRegionLeft: false }));
+
+    expect(canvases()).toHaveLength(1);
+  });
+
+  it('lets go of a pane it drew into once that pane has gone', () => {
     const pane = sidebar('left');
     renderStarfield(on({ starRegionTop: false, starRegionLeft: true }));
+    expect(canvases()).toHaveLength(1);
+
     pane.remove();
-    expect(resizeStarfield(on({ starRegionTop: false, starRegionLeft: true }))).toBe(false);
+    syncStarfield(on({ starRegionTop: false, starRegionLeft: true }));
+
+    expect(canvases()).toHaveLength(0);
   });
 });
 

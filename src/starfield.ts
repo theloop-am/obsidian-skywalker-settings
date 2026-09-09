@@ -128,19 +128,83 @@ interface Field {
 }
 
 const fields: Field[] = [];
-/** The hosts the last build looked at, including any it declined to draw into. */
-let covered: HTMLElement[] = [];
 let frame: number | null = null;
 
-/** The elements the settings ask for a sky in, in the order the regions declare. */
-function hostsFor(settings: SkywalkerSettings): HTMLElement[] {
-  const hosts: HTMLElement[] = [];
+interface Place {
+  readonly host: HTMLElement;
+  readonly region: Region;
+}
+
+/** Every element the settings ask for a sky in, with the region that asked. */
+function places(settings: SkywalkerSettings): Place[] {
+  if (!settings.starfieldEnabled || settings.starCount < 1) return [];
+  if (settings.starHeight <= 0 || window.innerWidth <= 0) return [];
+
+  const found: Place[] = [];
   for (const region of REGIONS) {
     if (!region.enabled(settings)) continue;
-    if (region.selector === 'body') hosts.push(document.body);
-    else hosts.push(...Array.from(document.querySelectorAll<HTMLElement>(region.selector)));
+    const hosts =
+      region.selector === 'body'
+        ? [document.body]
+        : Array.from(document.querySelectorAll<HTMLElement>(region.selector));
+    for (const host of hosts) found.push({ host, region });
   }
-  return hosts;
+  return found;
+}
+
+/** A sky for one host, or nothing when the pane has no room for one. A pane
+ *  behind another tab measures zero, and is simply not drawn into until it is
+ *  shown. */
+function build(place: Place, settings: SkywalkerSettings): Field | null {
+  const { host, region } = place;
+
+  const classes = [CANVAS_CLASS];
+  if (region.fixedBand === true) classes.push(BAND_CLASS);
+  if (region.beneath === true) classes.push(BENEATH_CLASS);
+
+  const canvas = host.createEl('canvas', { cls: classes.join(' ') });
+  canvas.setAttribute('aria-hidden', 'true');
+  /* Painting order among positioned siblings is document order, so a sky that
+     belongs under the pane's own canvas has to be inserted before it. */
+  if (region.beneath === true) host.insertBefore(canvas, host.firstChild);
+
+  const ctx = canvas.getContext('2d');
+  if (ctx === null) {
+    canvas.detach();
+    return null;
+  }
+
+  const field: Field = {
+    canvas,
+    ctx,
+    stars: [],
+    brightness:
+      region.edge === true
+        ? (settings.starBrightness / 100) * (settings.starEdgeBrightness / 100)
+        : settings.starBrightness / 100,
+    host,
+    band: region.fixedBand === true,
+    bandHeight: settings.starHeight,
+    width: 0,
+    height: 0,
+  };
+  measure(field);
+
+  const count = field.width < 1 || field.height < 1 ? 0 : wanted(field, settings);
+  if (count < 1) {
+    canvas.detach();
+    return null;
+  }
+
+  field.stars = Array.from({ length: count }, () => makeStar(settings));
+  return field;
+}
+
+/** Restarts the loop when there is something to draw and nothing drawing it. */
+function run(): void {
+  if (fields.length > 0 && frame === null && !stillSky() && !document.hidden) {
+    frame = window.requestAnimationFrame(draw);
+  }
 }
 
 /** Someone who has asked the system for less movement should get a still sky,
@@ -303,9 +367,7 @@ function draw(now: number): void {
 
 /** Picks the loop back up after it stopped for a hidden window. */
 export function wakeStarfield(): void {
-  if (fields.length > 0 && frame === null && !stillSky() && !document.hidden) {
-    frame = window.requestAnimationFrame(draw);
-  }
+  run();
 }
 
 function measure(field: Field): void {
@@ -328,84 +390,38 @@ function wanted(field: Field, settings: SkywalkerSettings): number {
 
 export function renderStarfield(settings: SkywalkerSettings): void {
   removeStarfield();
-  if (!settings.starfieldEnabled || settings.starCount < 1) return;
-  if (settings.starHeight <= 0 || window.innerWidth <= 0) return;
-
-  for (const region of REGIONS) {
-    if (!region.enabled(settings)) continue;
-
-    const hosts =
-      region.selector === 'body'
-        ? [document.body]
-        : Array.from(document.querySelectorAll<HTMLElement>(region.selector));
-
-    covered.push(...hosts);
-
-    for (const host of hosts) {
-      const classes = [CANVAS_CLASS];
-      if (region.fixedBand === true) classes.push(BAND_CLASS);
-      if (region.beneath === true) classes.push(BENEATH_CLASS);
-
-      const canvas = host.createEl('canvas', { cls: classes.join(' ') });
-      canvas.setAttribute('aria-hidden', 'true');
-      /* Painting order among positioned siblings is document order, so a sky
-         that belongs under the pane's own canvas has to be inserted before it. */
-      if (region.beneath === true) host.insertBefore(canvas, host.firstChild);
-
-      const ctx = canvas.getContext('2d');
-      if (ctx === null) {
-        canvas.detach();
-        continue;
-      }
-
-      const field: Field = {
-        canvas,
-        ctx,
-        stars: [],
-        brightness:
-          region.edge === true
-            ? (settings.starBrightness / 100) * (settings.starEdgeBrightness / 100)
-            : settings.starBrightness / 100,
-        host,
-        band: region.fixedBand === true,
-        bandHeight: settings.starHeight,
-        width: 0,
-        height: 0,
-      };
-      measure(field);
-
-      const count = field.width < 1 || field.height < 1 ? 0 : wanted(field, settings);
-      if (count < 1) {
-        canvas.detach();
-        continue;
-      }
-
-      field.stars = Array.from({ length: count }, () => makeStar(settings));
-      fields.push(field);
-    }
+  for (const place of places(settings)) {
+    const field = build(place, settings);
+    if (field !== null) fields.push(field);
   }
-
-  if (fields.length === 0) return;
-  if (frame === null) frame = window.requestAnimationFrame(draw);
+  run();
 }
 
 /**
- * A pane changed size. Stars are fractions of the canvas, so they keep their
- * arrangement and only the count moves — a wider pane shows more sky rather than
- * a different one. False means the panes themselves changed and the field has to
- * be built again.
+ * Brings what is drawn into line with what the settings ask for.
+ *
+ * A pane that only changed size keeps its stars - they are fractions of the
+ * canvas, so a wider pane shows more sky rather than a different one, and only
+ * the count moves. A pane that appeared, closed, was switched off, or was hidden
+ * behind another tab and shown again is the same question asked once: does this
+ * host have a sky, and should it.
  */
-export function resizeStarfield(settings: SkywalkerSettings): boolean {
-  if (fields.length === 0) return false;
-  if (fields.some((field) => !field.host.isConnected)) return false;
+export function syncStarfield(settings: SkywalkerSettings): void {
+  const wantedPlaces = places(settings);
+  const byHost = new Map(wantedPlaces.map((place) => [place.host, place]));
 
-  /* A pane that opened after the last build is a host nobody drew into, and no
-     existing field reports it: an empty tab gets no sky until the set is read
-     again. Compared against every host the build looked at, so a pane it
-     declined to draw into does not force a rebuild on every resize. */
-  const hosts = hostsFor(settings);
-  if (hosts.length !== covered.length) return false;
-  if (hosts.some((host, index) => host !== covered[index])) return false;
+  for (const field of [...fields]) {
+    if (field.host.isConnected && byHost.has(field.host)) continue;
+    field.canvas.detach();
+    fields.splice(fields.indexOf(field), 1);
+  }
+
+  const drawn = new Set(fields.map((field) => field.host));
+  for (const place of wantedPlaces) {
+    if (drawn.has(place.host)) continue;
+    const field = build(place, settings);
+    if (field !== null) fields.push(field);
+  }
 
   for (const field of fields) {
     measure(field);
@@ -413,13 +429,17 @@ export function resizeStarfield(settings: SkywalkerSettings): boolean {
     while (field.stars.length < count) field.stars.push(makeStar(settings));
     if (field.stars.length > count) field.stars.length = count;
   }
-  return true;
+
+  if (fields.length === 0 && frame !== null) {
+    window.cancelAnimationFrame(frame);
+    frame = null;
+  }
+  run();
 }
 
 export function removeStarfield(): void {
   for (const field of fields) field.canvas.detach();
   fields.length = 0;
-  covered = [];
   if (frame !== null) {
     window.cancelAnimationFrame(frame);
     frame = null;
