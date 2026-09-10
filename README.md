@@ -1,39 +1,45 @@
+# Skywalker Settings
+
+Companion for [Skywalker](https://github.com/theloop-am/obsidian-skywalker) — a dark theme for
+Obsidian with nine flavours light and dark, fourteen accents, and almost everything a switch in
+Style Settings.
+
+The theme is complete on its own. This plugin adds the three things a stylesheet cannot draw for
+itself, and the theme keeps its own fallback for each of them. More widgets will follow.
+
+Source:
+[theloop-am/obsidian-skywalker-settings](https://github.com/theloop-am/obsidian-skywalker-settings).
+
+[![Check](https://github.com/theloop-am/obsidian-skywalker-settings/actions/workflows/check.yml/badge.svg)](https://github.com/theloop-am/obsidian-skywalker-settings/actions/workflows/check.yml)
+[![Security scan](https://github.com/theloop-am/obsidian-skywalker-settings/actions/workflows/codeql.yml/badge.svg)](https://github.com/theloop-am/obsidian-skywalker-settings/actions/workflows/codeql.yml)
+[![Obsidian checks](https://github.com/theloop-am/obsidian-skywalker-settings/actions/workflows/obsidian.yml/badge.svg)](https://github.com/theloop-am/obsidian-skywalker-settings/actions/workflows/obsidian.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/theloop-am/obsidian-skywalker-settings/badge)](https://securityscorecards.dev/viewer/?uri=github.com/theloop-am/obsidian-skywalker-settings)
+![Obsidian](https://img.shields.io/badge/Obsidian-1.13.0+-483699?logo=obsidian&style=flat-square)
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 ## Contents
 
-- [Skywalker Settings](#skywalker-settings)
-  - [1 Installation](#1-installation)
-  - [2 A starfield](#2-a-starfield)
-  - [3 A life calendar](#3-a-life-calendar)
-  - [4 Your own artwork](#4-your-own-artwork)
-  - [5 Quality](#5-quality)
-  - [6 Privacy](#6-privacy)
-  - [7 Languages](#7-languages)
-  - [8 Development](#8-development)
-  - [9 License](#9-license)
+- [1 Installation](#1-installation)
+- [2 A starfield](#2-a-starfield)
+- [3 A life calendar](#3-a-life-calendar)
+- [4 Your own artwork](#4-your-own-artwork)
+- [5 Quality](#5-quality)
+- [6 Privacy](#6-privacy)
+- [7 Languages](#7-languages)
+- [8 Development](#8-development)
+- [9 License](#9-license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# Skywalker Settings
-
-Companion for the [Skywalker](https://github.com/theloop-am/obsidian-skywalker) theme.
-
-The theme is complete on its own. This plugin adds the three things a stylesheet cannot do for
-itself, and the theme keeps its own fallback for each of them.
-
 ## 1 Installation
 
-Not in Obsidian's community plugin browser yet: a plugin is submitted there after its first release,
-and appears once that submission has been reviewed. Until then, either route below installs it.
+In Obsidian: Settings → Community plugins → Browse, then search for Skywalker Settings.
 
-- **BRAT** — install [BRAT](https://github.com/TfTHacker/obsidian42-brat), then add
-  `theloop-am/obsidian-skywalker-settings` to it. It installs the latest release and follows the
-  ones after it.
-- **By hand** — download `main.js`, `manifest.json` and `styles.css` from the
-  [latest release](https://github.com/theloop-am/obsidian-skywalker-settings/releases/latest), put
-  them in `<vault>/.obsidian/plugins/skywalker-settings/`, then enable the plugin under Settings →
-  Community plugins.
+By hand: download `main.js`, `manifest.json` and `styles.css` from the
+[latest release](https://github.com/theloop-am/obsidian-skywalker-settings/releases/latest), put
+them in `<vault>/.obsidian/plugins/skywalker-settings/`, then enable the plugin under Settings →
+Community plugins.
 
 Requires Obsidian 1.13.0 or later. The theme is not required, and neither is this plugin.
 
