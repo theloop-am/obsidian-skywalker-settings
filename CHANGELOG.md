@@ -33,9 +33,9 @@ release where those four disagree.
 
 ### Added
 
-- A starfield drawn on canvas, across the top of the window and optionally down either sidebar and
-  onto empty tabs. Stars come in discrete sizes, only the largest carry a glow, and most of the sky
-  holds still while the few that blink go fully out rather than dimming.
+- A starfield drawn on canvas, across the top of the window and optionally down either sidebar,
+  onto empty tabs and behind the graph. Stars come in discrete sizes, only the largest carry a glow,
+  and most of the sky holds still while the few that blink go fully out rather than dimming.
 - Four presets — Headliner, Deep sky, Sparkle and Embers — each setting the count, size, brightness,
   twinkle and warmth together. Moving any slider a preset owns switches the dropdown to Custom, so
   it never claims something the sky is not doing.
